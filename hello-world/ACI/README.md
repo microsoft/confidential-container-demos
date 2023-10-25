@@ -26,7 +26,6 @@ The packaged version of this application is available on [Microsoft Container Re
 * [Deploy via Portal](https://aka.ms/aciccportal)
 * [Deploy via ARM with a custom confidential computing enforcement policy](https://aka.ms/aciccarm)
 
-
 ## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
