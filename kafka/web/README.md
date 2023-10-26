@@ -12,3 +12,11 @@ Every five seconds the frontend calls the backend endpoint /api/data and is retu
 ```
 
 Where the message is either encrypted (when running without a security policy in a Confidential Container environment or on a non-confidential environment)
+
+## Instructions
+
+Build OCI image of the web app by running: `docker build -t <image-name>:<tag> .`
+Push image to Azure Container Registry:
+`az acr login -n <registry-name>`
+`docker push <image-name>:<tag>`
+Deploy application with `kubectl`
