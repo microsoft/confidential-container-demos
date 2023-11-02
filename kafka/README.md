@@ -107,7 +107,7 @@ Copy the AttestURI endpoint value to [SkrClientMAAEndpoint](consumer.yaml#L31)
 
 #### Setup role access for the managed identity 
 
-Assign the managed identity you created <USER_ASSIGNED_IDENTITY_NAME> in step 3 with the correct access permissions. The managed identity needs Key Vault Crypto Officer and Key Vault Crypto User roles if using AKV key vault or Managed HSM Crypto Officer and Managed HSM Crypto User roles for /keys if using AKV managed HSM.
+Assign the managed identity you created `<USER_ASSIGNED_IDENTITY_NAME>` in step 3 with the correct access permissions. The managed identity needs Key Vault Crypto Officer and Key Vault Crypto User roles if using AKV key vault or Managed HSM Crypto Officer and Managed HSM Crypto User roles for /keys if using AKV managed HSM.
 
 #### Install Kafka Cluster 
 

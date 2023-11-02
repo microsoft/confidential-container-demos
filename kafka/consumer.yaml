@@ -26,11 +26,11 @@ spec:
       name: kafka-golang-consumer
       env:
         - name: SkrClientKID
-          value: caksdemo
+          value: ""
         - name: SkrClientMAAEndpoint
-          value: sharedeus2.eus2.attest.azure.net
+          value: ""
         - name: SkrClientAKVEndpoint
-          value: accmhsm.managedhsm.azure.net
+          value: ""
         - name: TOPIC
           value: kafka-demo-topic
       command:
