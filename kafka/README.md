@@ -6,24 +6,27 @@
 
 ### Description
 
-Apache Kafka is a powerful distributed data store designed for efficiently ingesting and processing streaming data in real-time. It offers numerous advantages such as scalability, data durability, and low latency. However, it's essential to note that an out-of-the-box Apache Kafka installation does not provide data encryption at rest. By default, all data traffic is transmitted in plain text, potentially allowing unauthorized access to sensitive information. While Apache Kafka does support data encryption in transit using SSL or SASL_SSL, as of today, data at rest encryption is currently not natively supported. To ensure end-to-end data security, including data at rest, heap dumps, and log files, users need to implement end-to-end encryption. 
+Apache Kafka is a powerful distributed data store designed for efficiently ingesting and processing streaming data in real-time. It offers numerous advantages such as scalability, data durability, and low latency. However, it's essential to note that an out-of-the-box Apache Kafka installation does not provide data encryption at rest. By default, all data traffic is transmitted in plain text, potentially allowing unauthorized access to sensitive information. While Apache Kafka does support data encryption in transit using SSL or SASL_SSL, as of today, data at rest encryption is currently not natively supported. To ensure end-to-end data security, including data in transit, at rest, heap dumps, and log files, users need to implement end-to-end encryption. 
 
-In this example, we demonstrate the implementation of end-to-end encryption for Kafka messages using encryption keys managed by Azure Managed Hardware Security Modules (mHSM). The key is only released when the Kafka consumer runs within a confidential container with azure attestation secret provisioning container injected into the pod.
+In this example, we demonstrate the implementation of end-to-end encryption for Kafka messages using encryption keys managed by Azure Managed Hardware Security Modules (mHSM). The key is only released when the Kafka consumer runs within a confidential container environment with azure attestation secret provisioning container injected into the pod.
 
 This example comprises four components: 
 
-Kafka Cluster: A simple Kafka cluster deployed in the Kafka namespace on the cluster. 
+Kafka Cluster: A simple kafka cluster deployed in the kafka namespace on an AKS cluster. 
 
-Kafka Producer: A Kafka producer running as a vanilla Kubernetes pod that sends encrypted user-configured messages using a public key to a Kafka topic. 
+Kafka Producer: A kafka producer running as a vanilla k8s pod that sends encrypted user-configured messages using a public key to a kafka topic. 
 
-Kafka Consumer: A Kafka consumer pod running with the kata-cc runtime, equipped with a secure key release container to retrieve the private key for decrypting Kafka messages. 
+Kafka Consumer: A kafka consumer pod running with the kata-cc runtime class, equipped with a azure attestation secret provisioning container to retrieve the private key for decrypting encrypted kafka messages. 
 
 Web Service: Consumed messages are sent to a web service for display on a web UI. Messages, whether successfully decrypted or not, will be displayed. If not decrypted, they will appear as base64-encoded ciphertext.  
 
 ### Step by Step Example 
 
 #### Enable Confidential Container on AKS cluster during creation.  
+
+```
 az aks create -g myResourceGroup -n myManagedCluster –kubernetes-version <1.24.0 and above> --os-sku AzureLinux –vm-size <VM sizes capable of nested SNP VM> --workload-runtime <kataCcIsolation> 
+```
 
 #### Enable workload identities on the cluster.  
 
@@ -90,7 +93,7 @@ az identity federated-credential create --name ${FEDERATED_IDENTITY_CREDENTIAL_N
 
 #### Setup dependency resources (AKV/mHSM)
 
-The user needs to instantiate an Azure Key Vault resource that supports storing keys in an HSM: a [Premium vault](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or an [MHSM resource](https://docs.microsoft.com/en-us/azure/key-vault/managed-hsm/overview). Set the value of [SkrClientAKVEndpoint](consumer.yamlL#33) with the full url of the AKV/mHSM resource. 
+The user needs to instantiate an Azure Key Vault resource that supports storing keys in an HSM: a [Premium vault](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or an [MHSM resource](https://docs.microsoft.com/en-us/azure/key-vault/managed-hsm/overview). Set the value of [SkrClientAKVEndpoint](consumer.yaml#L33) with the full url of the AKV/mHSM resource. 
 
 #### Obtain Attestation Endpoint 
 
@@ -100,7 +103,7 @@ If you don't already have a valid attestation endpoint, create a [Microsoft Azur
 az attestation show --name "<ATTESTATION PROVIDER NAME>" --resource-group "<RESOURCE GROUP>"
 ```
 
-Copy the AttestURI endpoint value to [SkrClientMAAEndpoint](consumer.yamlL#31) 
+Copy the AttestURI endpoint value to [SkrClientMAAEndpoint](consumer.yaml#L31) 
 
 #### Setup role access for the managed identity 
 
@@ -112,7 +115,7 @@ Install Kafka Cluster: Install the Kafka cluster in the Kafka namespace followin
 
 #### Configure Kafka Consumer
 
-Select an appropriate name for the RSA asymmetric key pair and replace [SkrClientKID](consumer.yamlL#29). You can leave the remaining configuration environment variables as is, with the option to change the Kafka topic. 
+Select an appropriate name for the RSA asymmetric key pair and replace [SkrClientKID](consumer.yaml#L29). You can leave the remaining configuration environment variables as is, with the option to change the Kafka topic. 
 
 #### Generate Security Policy 
 
@@ -128,9 +131,9 @@ az confirm katapolicygen -y consumer.yaml
 
 Use the provided script [setup-key-mhsm.sh](setup-key-mhsm.sh) to prepare encryption key for the workload. 
 The script depends on several environment variables that we need to set before running the script. 
-Replace the value of [WORKLOAD_MEASUREMENT](setup-key-mhsm.shL#18) with the hash of the security policy. 
-Replace the value of the [MANAGED_IDENTITY](setup-key-mhsm.shL#17) with the identity Resource ID created in the previous step. 
-Replace the [MAA_ENDPOINT](setup-key-mhsm.shL#16) with the MAA endpoint with... 
+Replace the value of [WORKLOAD_MEASUREMENT](setup-key-mhsm.sh#L18) with the hash of the security policy. 
+Replace the value of the [MANAGED_IDENTITY](setup-key-mhsm.sh#L17) with the identity Resource ID created in the previous step. 
+Replace the [MAA_ENDPOINT](setup-key-mhsm.sh#L16) with the MAA endpoint with... 
 
 Run the script: ```bash setup setup-key-mhsm.sh <SkrClientKID> <mHSM-name>``` 
 
