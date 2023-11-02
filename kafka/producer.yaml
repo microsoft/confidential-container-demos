@@ -1,0 +1,32 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kafka-producer
+  namespace: kafka
+spec:
+  containers:
+    - image: "fishersnpregistry.azurecr.io/fisher/kafkaproducer:v1.0"
+      name: kafka-producer
+      command:
+        - /produce
+      env:
+        - name: TOPIC
+          value: kafka-demo-topic
+        - name: PUBKEY
+          value: |-
+            -----BEGIN PUBLIC KEY-----
+            MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAy9nUUAtVgUZd/3vRYFSt
+            tKaR06oJxla+syWj1jtmVnw4VS4g+fV+ij2ee/sHL3ZJBo41oprkjwIwNSH2kfl9
+            g7Pc0o1kEbDxNjxGoLmrf1Xdrpl06jOBah6pWyAFhGoYQ7Mwbs+K0Jsuib6VLDmL
+            vTWJhSP7NTbpazxLi8TgBCLSpAmZaN78rmYK9IMuECVqNLvdtgrrcg7VLEAjTb/L
+            NfcLISrAhqexIiCCo95X74F8i7tZfzHBy9Q70xNfHthPcm3F9p3z//8j4aQPvicK
+            xIzB66iKtRCsfYu6WbWTCgyQY1jz42E1j3NoW6Peir2NUTAAutv2FJyP15desTr2
+            JW3OavTz6Xm2UXPgan0yvbQK/8dC+Z4Wjs6epT5ebkOH5kqRbZCsGTmmvo4COU7/
+            NexJWT4MIbyAFeUhiL/4B2YzAvbXV1yL9QHpNH+5rrAhlPMO1YPgVA0JZSiKt1v+
+            29PjxoqQUSNbuAFZDBAQz5/nto0lkjFkAqxUzt/nu0m1AgMBAAE=
+            -----END PUBLIC KEY-----
+      resources:
+        limits:
+          memory: 1Gi
+          cpu: 200m
