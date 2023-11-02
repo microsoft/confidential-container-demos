@@ -43,7 +43,8 @@ Or append `--enable-oidc-issuer` `--enable-workload-identity` parameters to the 
 
 ```
 export LOCATION="westcentralus" # This is the region of the resource group your AKS cluster resides 
-export SERVICE_ACCOUNT_NAMESPACE="default" # This is the kubernetes namespace you intend to run encfs workload
+export SERVICE_ACCOUNT_NAMESPACE="kafka" # This is the kubernetes namespace you intend to run encfs workload
+export RESOURCE_GROUP="" # This is the resource group your AKS cluster resides 
 export SERVICE_ACCOUNT_NAME="workload-identity-sa" 
 export SUBSCRIPTION="$(az account show --query id --output tsv)"
 export USER_ASSIGNED_IDENTITY_NAME="myIdentity" 
@@ -127,6 +128,12 @@ Generate the security policy for the Kafka consumer YAML file and obtain the has
 az confcom katapolicygen -y consumer.yaml
 ```
 
+Once the policy is generated, it will appear under annotation section of the YAML file with `io.katacontainers.config.agent.policy` as the key. Copy the entire policy and provide it as an input to the security policy digest tool to obtain the hash. 
+
+```
+go run securitydigesttool.go -p <security-policy>
+```
+
 #### Prepare RSA Encryption/Decryption Key
 
 Use the provided script [setup-key-mhsm.sh](setup-key-mhsm.sh) to prepare encryption key for the workload. 
@@ -135,7 +142,7 @@ Replace the value of [WORKLOAD_MEASUREMENT](setup-key-mhsm.sh#L21) with the hash
 Replace the value of the [MANAGED_IDENTITY](setup-key-mhsm.sh#L20) with the identity Resource ID created in the previous step. 
 Replace the [MAA_ENDPOINT](setup-key-mhsm.sh#L19) with the MAA endpoint value you obtain in "obtain attestation endpoint" step. 
 
-Run the script: ```bash setup setup-key-mhsm.sh <SkrClientKID> <mHSM-name>``` 
+Run the script: ```bash setup-key-mhsm.sh <SkrClientKID> <mHSM-name>``` 
 
 The script generates an RSA asymmetric key pair (public and private keys) in mHSM under the `SkrCLientKID`, creates a key release policy with user-configured data, uploads the key release policy to the Azure mHSM under the `SkrCLientKID` and downloads the public key.  
 
