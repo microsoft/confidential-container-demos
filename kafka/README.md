@@ -93,7 +93,7 @@ az identity federated-credential create --name ${FEDERATED_IDENTITY_CREDENTIAL_N
 
 #### Setup dependency resources (AKV/mHSM)
 
-The user needs to instantiate an Azure Key Vault resource that supports storing keys in an HSM: a [Premium vault](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or an [MHSM resource](https://docs.microsoft.com/en-us/azure/key-vault/managed-hsm/overview). Set the value of [SkrClientAKVEndpoint](consumer.yaml#L43) with the full url of the AKV/mHSM resource. 
+The user needs to instantiate an Azure Key Vault resource that supports storing keys in an HSM: a [Premium vault](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or an [MHSM resource](https://docs.microsoft.com/en-us/azure/key-vault/managed-hsm/overview). Set the value of [SkrClientAKVEndpoint](consumer.yaml#L38) with the full url of the AKV/mHSM resource. 
 
 #### Obtain Attestation Endpoint 
 
