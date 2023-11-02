@@ -115,7 +115,7 @@ Install Kafka Cluster: Install the Kafka cluster in the Kafka namespace followin
 
 #### Configure Kafka Consumer
 
-Select an appropriate name for the RSA asymmetric key pair and replace [SkrClientKID](consumer.yaml#L29). You can leave the remaining configuration environment variables as is, with the option to change the Kafka topic. 
+Select an appropriate name for the RSA asymmetric key pair and replace [SkrClientKID](consumer.yaml#L29). You have the option to change the Kafka topic you want to use. 
 
 #### Generate Security Policy 
 
@@ -124,7 +124,7 @@ To generate security policies, install the Azure confcom CLI extension by follow
 Generate the security policy for the Kafka consumer YAML file and obtain the hash of the security policy. 
 
 ```
-az confirm katapolicygen -y consumer.yaml
+az confcom katapolicygen -y consumer.yaml
 ```
 
 #### Prepare RSA Encryption/Decryption Key
