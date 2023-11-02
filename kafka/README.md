@@ -119,7 +119,7 @@ Select an appropriate name for the RSA asymmetric key pair and replace [SkrClien
 
 #### Generate Security Policy 
 
-To generate security policies, install the Azure confcom CLI extension by following the instructions [here](https://github.com/Azure/azure-cli-extensions/tree/main/src/confcom/azext_confcom#microsoft-azure-cli-confcom-extension-examples)
+To generate security policies, install the Azure confcom CLI extension by following the instructions [here](https://github.com/Azure/azure-cli-extensions/blob/main/src/confcom/README.md)
 
 Generate the security policy for the Kafka consumer YAML file and obtain the hash of the security policy. 
 
@@ -133,7 +133,7 @@ Use the provided script [setup-key-mhsm.sh](setup-key-mhsm.sh) to prepare encryp
 The script depends on several environment variables that we need to set before running the script. 
 Replace the value of [WORKLOAD_MEASUREMENT](setup-key-mhsm.sh#L18) with the hash of the security policy. 
 Replace the value of the [MANAGED_IDENTITY](setup-key-mhsm.sh#L17) with the identity Resource ID created in the previous step. 
-Replace the [MAA_ENDPOINT](setup-key-mhsm.sh#L16) with the MAA endpoint with... 
+Replace the [MAA_ENDPOINT](setup-key-mhsm.sh#L16) with the MAA endpoint value you obtain in "obtain attestation endpoint" step. 
 
 Run the script: ```bash setup setup-key-mhsm.sh <SkrClientKID> <mHSM-name>``` 
 
@@ -146,10 +146,9 @@ Once the public key is downloaded, replace the PUBKEY env var on the producer YA
 Deploy the consumer, producer, and web service respectively, and obtain the IP address of the web service using the following commands: 
 
 ```
-kubectl apply –f web-service.yaml  
 kubectl apply –f consumer.yaml  
 kubectl apply –f producer.yaml  
-kubectl get svc –n kafka 
+kubectl get svc nextjs2 –n kafka 
 ```
 
 Copy and paste the IP address of the web service into your web browser and observe the decrypted messages. You should also attempt to run the consumer as a regular Kubernetes pod by removing the aasp container and kata-cc runtime class spec. Since we are not running the consumer with kata-cc runtime class, we no longer need the policy. Remove the entire policy. Observe the messages again on the web UI after redeploying the workload. Messages will appear as base64-encoded ciphertext because the private encryption key cannot be retrieved. The key cannot be retrieved because the consumer is no longer running in a confidential environment, and the aasp container is missing, preventing decryption of messages. 

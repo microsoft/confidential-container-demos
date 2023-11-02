@@ -1,3 +1,8 @@
+// --------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// --------------------------------------------------------------------------------------------
+
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
 import { useEffect, useState } from 'react'
@@ -6,7 +11,7 @@ export default function Home() {
   const [message, setMessage] = useState("No Data Yet")
   useEffect(() => {
     const getData = async () => {
-      const response = await  fetch("/api/data")
+      const response = await fetch("/api/data")
       const data = await response.json()
       setMessage(data.message)
     }
@@ -33,7 +38,7 @@ export default function Home() {
           {message.length > 50 ? "Encrypted" : "Decrypted"} Kafka Message:
         </h2>
         <p className={styles.description}>
-        <code className={styles.code}>{message}</code>
+          <code className={styles.code}>{message}</code>
         </p>
       </main>
     </div>
