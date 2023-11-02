@@ -111,7 +111,7 @@ Assign the managed identity you created `<USER_ASSIGNED_IDENTITY_NAME>` in step 
 
 #### Install Kafka Cluster 
 
-Install Kafka Cluster: Install the Kafka cluster in the Kafka namespace following the instructions here:  Quickstarts (strimzi.io) 
+Install Kafka Cluster: Install the Kafka cluster in the Kafka namespace following the instructions [here](https://strimzi.io/quickstarts/)
 
 #### Configure Kafka Consumer
 
