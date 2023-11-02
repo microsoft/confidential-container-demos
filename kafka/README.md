@@ -93,7 +93,7 @@ az identity federated-credential create --name ${FEDERATED_IDENTITY_CREDENTIAL_N
 
 #### Setup dependency resources (AKV/mHSM)
 
-The user needs to instantiate an Azure Key Vault resource that supports storing keys in an HSM: a [Premium vault](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or an [MHSM resource](https://docs.microsoft.com/en-us/azure/key-vault/managed-hsm/overview). Set the value of [SkrClientAKVEndpoint](consumer.yaml#L33) with the full url of the AKV/mHSM resource. 
+The user needs to instantiate an Azure Key Vault resource that supports storing keys in an HSM: a [Premium vault](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or an [MHSM resource](https://docs.microsoft.com/en-us/azure/key-vault/managed-hsm/overview). Set the value of [SkrClientAKVEndpoint](consumer.yaml#L43) with the full url of the AKV/mHSM resource. 
 
 #### Obtain Attestation Endpoint 
 
@@ -103,7 +103,7 @@ If you don't already have a valid attestation endpoint, create a [Microsoft Azur
 az attestation show --name "<ATTESTATION PROVIDER NAME>" --resource-group "<RESOURCE GROUP>"
 ```
 
-Copy the AttestURI endpoint value to [SkrClientMAAEndpoint](consumer.yaml#L31) 
+Copy the AttestURI endpoint value to [SkrClientMAAEndpoint](consumer.yaml#L36) 
 
 #### Setup role access for the managed identity 
 
@@ -115,7 +115,7 @@ Install Kafka Cluster: Install the Kafka cluster in the Kafka namespace followin
 
 #### Configure Kafka Consumer
 
-Select an appropriate name for the RSA asymmetric key pair and replace [SkrClientKID](consumer.yaml#L29). You have the option to change the Kafka topic you want to use. 
+Select an appropriate name for the RSA asymmetric key pair and replace [SkrClientKID](consumer.yaml#L34). You have the option to change the Kafka topic you want to use. 
 
 #### Generate Security Policy 
 
@@ -131,9 +131,9 @@ az confcom katapolicygen -y consumer.yaml
 
 Use the provided script [setup-key-mhsm.sh](setup-key-mhsm.sh) to prepare encryption key for the workload. 
 The script depends on several environment variables that we need to set before running the script. 
-Replace the value of [WORKLOAD_MEASUREMENT](setup-key-mhsm.sh#L18) with the hash of the security policy. 
-Replace the value of the [MANAGED_IDENTITY](setup-key-mhsm.sh#L17) with the identity Resource ID created in the previous step. 
-Replace the [MAA_ENDPOINT](setup-key-mhsm.sh#L16) with the MAA endpoint value you obtain in "obtain attestation endpoint" step. 
+Replace the value of [WORKLOAD_MEASUREMENT](setup-key-mhsm.sh#L23) with the hash of the security policy. 
+Replace the value of the [MANAGED_IDENTITY](setup-key-mhsm.sh#L22) with the identity Resource ID created in the previous step. 
+Replace the [MAA_ENDPOINT](setup-key-mhsm.sh#L21) with the MAA endpoint value you obtain in "obtain attestation endpoint" step. 
 
 Run the script: ```bash setup setup-key-mhsm.sh <SkrClientKID> <mHSM-name>``` 
 
