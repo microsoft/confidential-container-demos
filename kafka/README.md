@@ -131,9 +131,9 @@ az confcom katapolicygen -y consumer.yaml
 
 Use the provided script [setup-key-mhsm.sh](setup-key-mhsm.sh) to prepare encryption key for the workload. 
 The script depends on several environment variables that we need to set before running the script. 
-Replace the value of [WORKLOAD_MEASUREMENT](setup-key-mhsm.sh#L23) with the hash of the security policy. 
-Replace the value of the [MANAGED_IDENTITY](setup-key-mhsm.sh#L22) with the identity Resource ID created in the previous step. 
-Replace the [MAA_ENDPOINT](setup-key-mhsm.sh#L21) with the MAA endpoint value you obtain in "obtain attestation endpoint" step. 
+Replace the value of [WORKLOAD_MEASUREMENT](setup-key-mhsm.sh#L18) with the hash of the security policy. 
+Replace the value of the [MANAGED_IDENTITY](setup-key-mhsm.sh#L17) with the identity Resource ID created in the previous step. 
+Replace the [MAA_ENDPOINT](setup-key-mhsm.sh#L16) with the MAA endpoint value you obtain in "obtain attestation endpoint" step. 
 
 Run the script: ```bash setup setup-key-mhsm.sh <SkrClientKID> <mHSM-name>``` 
 
