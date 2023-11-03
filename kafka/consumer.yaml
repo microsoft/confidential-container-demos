@@ -1,3 +1,7 @@
+# --------------------------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License.txt in the project root for license information.
+# --------------------------------------------------------------------------------------------
 ---
 apiVersion: v1
 kind: Pod
@@ -27,9 +31,9 @@ spec:
       name: kafka-golang-consumer
       env:
         - name: SkrClientKID
-          value: ""
+          value: kafka-encryption-demo
         - name: SkrClientMAAEndpoint
-          value: ""
+          value: sharedeus2.eus2.test.attest.azure.net
         - name: SkrClientAKVEndpoint
           value: ""
         - name: TOPIC
@@ -60,34 +64,4 @@ spec:
     - protocol: TCP
       port: 3333
       targetPort: kafka-consumer
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: nextjs2
-  namespace: kafka
-  labels:
-    app.kubernetes.io/name: nextjs2
-spec:
-  runtimeClassName: kata-cc
-  containers:
-    - image: "fishersnpregistry.azurecr.io/kafkaweb:v7"
-      name: nextjs
-      ports:
-        - containerPort: 3000
-          name: nextjs-port
-      imagePullPolicy: Always
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: nextjs2
-  namespace: kafka
-spec:
-  type: LoadBalancer
-  selector:
-    app.kubernetes.io/name: nextjs2
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: nextjs-port
+

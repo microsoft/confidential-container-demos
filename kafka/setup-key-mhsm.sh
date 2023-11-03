@@ -16,10 +16,6 @@ if [ $# -ne 2 ] ; then
 	exit 1
 fi
 
-export MAA_ENDPOINT=""
-export MANAGED_IDENTITY="" 
-export WORKLOAD_MEASUREMENT=""
-
 key_name=$1
 mhsm_name=$2
 

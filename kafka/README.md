@@ -64,7 +64,9 @@ Create a managed identity in the same resource group your AKS cluster resides in
 az identity create --name "${USER_ASSIGNED_IDENTITY_NAME}" --resource-group "${RESOURCE_GROUP}" --location "${LOCATION}" --subscription "${SUBSCRIPTION}"
 
 export USER_ASSIGNED_CLIENT_ID="$(az identity show --resource-group "${RESOURCE_GROUP}" --name "${USER_ASSIGNED_IDENTITY_NAME}" --query 'clientId' -otsv)"
+export MANAGED_IDENTITY="$(az identity show --resource-group "${RESOURCE_GROUP}" --name "${USER_ASSIGNED_IDENTITY_NAME}" --query 'id' -otsv)"
 ```
+The MANAGED_IDENTITY env var is required to run `setup-key-mhsm.sh`.
 
 Create a service account
 
@@ -96,16 +98,6 @@ az identity federated-credential create --name ${FEDERATED_IDENTITY_CREDENTIAL_N
 
 The user needs to instantiate an Azure Key Vault resource that supports storing keys in an HSM: a [Premium vault](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or an [MHSM resource](https://docs.microsoft.com/en-us/azure/key-vault/managed-hsm/overview). Set the value of [SkrClientAKVEndpoint](consumer.yaml#L38) with the full url of the AKV/mHSM resource. 
 
-#### Obtain Attestation Endpoint 
-
-If you don't already have a valid attestation endpoint, create a [Microsoft Azure Attestation](https://learn.microsoft.com/en-us/azure/attestation/overview) endpoint to author the attestation token and run the following command to get the endpoint value:
-
-```
-az attestation show --name "<ATTESTATION PROVIDER NAME>" --resource-group "<RESOURCE GROUP>"
-```
-
-Copy the AttestURI endpoint value to [SkrClientMAAEndpoint](consumer.yaml#L36) 
-
 #### Setup role access for the managed identity 
 
 Assign the managed identity you created `<USER_ASSIGNED_IDENTITY_NAME>` in step 3 with the correct access permissions. The managed identity needs Key Vault Crypto Officer and Key Vault Crypto User roles if using AKV key vault or Managed HSM Crypto Officer and Managed HSM Crypto User roles for /keys if using AKV managed HSM.
@@ -114,35 +106,26 @@ Assign the managed identity you created `<USER_ASSIGNED_IDENTITY_NAME>` in step 
 
 Install Kafka Cluster: Install the Kafka cluster in the Kafka namespace following the instructions [here](https://strimzi.io/quickstarts/)
 
-#### Configure Kafka Consumer
-
-Select an appropriate name for the RSA asymmetric key pair and replace [SkrClientKID](consumer.yaml#L34). You have the option to change the Kafka topic you want to use. 
-
 #### Generate Security Policy 
 
 To generate security policies, install the Azure confcom CLI extension by following the instructions [here](https://github.com/Azure/azure-cli-extensions/blob/main/src/confcom/README.md)
 
-Generate the security policy for the Kafka consumer YAML file and obtain the hash of the security policy. 
+Generate the security policy for the Kafka consumer YAML file and obtain the hash of the security policy. Set WORKLOAD_MEASUREMENT to the hash of the security policy because setup-key-mhsm.sh script depends on this env var.
 
 ```
-az confcom katapolicygen -y consumer.yaml
-```
-
-Once the policy is generated, it will appear under annotation section of the YAML file with `io.katacontainers.config.agent.policy` as the key. Copy the entire policy and provide it as an input to the security policy digest tool to obtain the hash. 
-
-```
-go run securitydigesttool.go -p <security-policy>
+export WORKLOAD_MEASUREMENT=$(az confcom katapolicygen -y consumer.yaml --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
+az confcom katapolicygen -y web-service.yaml
 ```
 
 #### Prepare RSA Encryption/Decryption Key
 
 Use the provided script [setup-key-mhsm.sh](setup-key-mhsm.sh) to prepare encryption key for the workload. 
-The script depends on several environment variables that we need to set before running the script. 
-Replace the value of [WORKLOAD_MEASUREMENT](setup-key-mhsm.sh#L21) with the hash of the security policy. 
-Replace the value of the [MANAGED_IDENTITY](setup-key-mhsm.sh#L20) with the identity Resource ID created in the previous step. 
-Replace the [MAA_ENDPOINT](setup-key-mhsm.sh#L19) with the MAA endpoint value you obtain in "obtain attestation endpoint" step. 
+Set the `MAA_ENDPOINT` env var to the [MAA endpoint value](consumer.yaml#L36). This value needs to match the `SkrClientMAAEndpoint` from the consumer YAML file. 
 
-Run the script: ```bash setup-key-mhsm.sh <SkrClientKID> <mHSM-name>``` 
+Run the script: 
+```bash 
+setup-key-mhsm.sh "kafka-encryption-demo" <mHSM-name>
+``` 
 
 The script generates an RSA asymmetric key pair (public and private keys) in mHSM under the `SkrCLientKID`, creates a key release policy with user-configured data, uploads the key release policy to the Azure mHSM under the `SkrCLientKID` and downloads the public key.  
 
@@ -153,7 +136,8 @@ Once the public key is downloaded, replace the PUBKEY env var on the producer YA
 Deploy the consumer, producer, and web service respectively, and obtain the IP address of the web service using the following commands: 
 
 ```
-kubectl apply –f consumer.yaml  
+kubectl apply –f consumer.yaml 
+kubectl apply -f web-service.yaml
 kubectl apply –f producer.yaml  
 kubectl get svc nextjs2 –n kafka 
 ```

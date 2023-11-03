@@ -20,15 +20,7 @@ spec:
         - name: PUBKEY
           value: |-
             -----BEGIN PUBLIC KEY-----
-            MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAqPVfSjadCqRPegdfIP3U
-            9UfGWgyTM5V6pAOGxYmYb93SfiWKFaYG6okwh1oNSnsS9fwAZjrZb97/cf7eH6uy
-            NyZ5pcDFJmcYyaQsq1fGdzuOJ93cBwjRhSvaKGA9979IHSW3kqQSsuA2/S9VlLp2
-            65xeHLjwA6mLJmcDGtoEhzUNuDvjfyNftbeJiVx01sobs1n9dqGwtM3D/Oj+yeqV
-            InMgTUSoXA1iTjKBhkRAxT3PNl30SNVtnlataXHhAvKCp2Hwj5WdWLlf6U5KNuFs
-            vywJ2myRRcXwZvI66k6cSVIL5DNfuWjqTAi0VywIM5TZVmciB9traB5fgMfnW1se
-            yqD30MFmInhIuoUrYe8eFUlwTWTQZdXQj7ykPqaKnirp9kzA16mo/gzVpjLRUnF4
-            Xo41xoo+SI5HREo7LuSH5DkprccRntcJU8c6kUMnT0tvqEf/gguW7xPIZAhDdAz/
-            rs+GrKL67ad0eNzG1mIS+GDbxa0LVOjemBVt/8xhQm+5AgMBAAE=
+            MIIBojAN***AE=
             -----END PUBLIC KEY-----
       resources:
         limits:
