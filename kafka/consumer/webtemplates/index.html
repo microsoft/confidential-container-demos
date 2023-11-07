@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <div className=container>
+      <Head>
+        <title>Confidential Containers on AKS</title>
+        <link rel="icon" href="/web/favicon.ico" />
+        <link rel="stylesheet" href="/web/globals.css">
+        <link rel="stylesheet" href="/web/Home.module.css">
+      </Head>
+
+      <main className="main">
+        <h1 className="title">
+          Welcome to <a href="https://github.com/microsoft/kata-containers">Confidential Containers on AKS!</a>
+        </h1>
+
+        <h2>
+          {{if .encrypted}} Encrypted {{else}} Unencrypted {{end}} Kafka Message:
+        </h2>
+        <p className="description">
+          <code className="code">{{.message}}</code>
+        </p>
+      </main>
+    </div>
+</html>

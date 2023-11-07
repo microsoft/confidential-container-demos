@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"math/big"
@@ -29,6 +30,8 @@ import (
 var topic = getenv("TOPIC", "my-topic")
 var brokers = getenv("BROKERS", "my-cluster-kafka-bootstrap:9092")
 var consumergroup = getenv("CONSUMERGROUP", "strimzikafkaconsumergroupid")
+
+var keyEnabled bool
 
 func getenv(key, fallback string) string {
 	value := os.Getenv(key)
@@ -50,11 +53,18 @@ func main() {
 	}
 
 	cgh := &consumerGroupHandler{
-		ready:    make(chan bool),
+		ready:    make(chan struct{}),
 		end:      make(chan int, 1),
-		done:     make(chan bool),
-		messages: make(chan string, 100),
+		done:     make(chan struct{}),
+		messages: make(chan string),
 	}
+
+	t, err := template.ParseFiles("/webtemplates/index.html")
+	if err != nil {
+		log.Printf("Error parsing templates: %s", err.Error())
+		return
+	}
+
 	ctx := context.Background()
 	go func() {
 		for {
@@ -63,16 +73,24 @@ func main() {
 		}
 
 	}()
+
 	getRoot := func(w http.ResponseWriter, r *http.Request) {
-		message := <-cgh.messages
+		data := struct {
+			Encrypted bool
+			Message   string
+		}{
+			Encrypted: keyEnabled,
+		}
+		data.Message = <-cgh.messages
 		fmt.Printf("got / request\n")
-		io.WriteString(w, fmt.Sprintf("%s\n", message))
+		t.Execute(w, data)
 	}
 
 	<-cgh.ready // Await till the consumer has been set up
 	log.Println("Sarama consumer up and running!...")
 
 	http.HandleFunc("/", getRoot)
+	http.Handle("/web/", http.StripPrefix("/web", http.FileServer(http.Dir("/web"))))
 
 	go func() {
 		err = http.ListenAndServe(":3333", nil)
@@ -103,9 +121,9 @@ func main() {
 
 // struct defining the handler for the consuming Sarama method
 type consumerGroupHandler struct {
-	ready    chan bool
+	ready    chan struct{}
 	end      chan int
-	done     chan bool
+	done     chan struct{}
 	messages chan string
 }
 
@@ -180,7 +198,10 @@ func (cgh *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSessio
 					log.Printf("error decrypting message %q\n", err.Error())
 				}
 
-				cgh.messages <- string(plaintext)
+				select {
+				case cgh.messages <- string(plaintext):
+				default:
+				}
 				log.Printf("Message received: value=%s, partition=%d, offset=%d", plaintext, message.Partition, message.Offset)
 
 			} else {
@@ -250,6 +271,7 @@ func RSAPrivateKeyFromJWK(key1 []byte) (*rsa.PrivateKey, error) {
 			new(big.Int).SetBytes(q),
 		},
 	}
+	keyEnabled = true
 
 	return key, nil
 }
