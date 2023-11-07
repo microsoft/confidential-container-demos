@@ -12,19 +12,20 @@ set -e
 # the public key and saves the key info
 
 if [ $# -ne 2 ] ; then
-	echo "Usage: $0 <key-name> <mhsm-name>"
+	echo "Usage: $0 <KEY_NAME> <AZURE_AKV_RESOURCE_ENDPOINT>"
 	exit 1
 fi
 
-key_name=$1
-mhsm_name=$2
+KEY_NAME=$1
+AZURE_AKV_RESOURCE_ENDPOINT=$2
 
-if [[ $(curl https://${mhsm_name}.managedhsm.azure.net) ]] 2>/dev/null; then
+key_vault_name=$(echo "$AZURE_AKV_RESOURCE_ENDPOINT" | cut -d. -f1)
+echo "Key vault name is ${key_vault_name}"
+
+if [[ $(curl https://$AZURE_AKV_RESOURCE_ENDPOINT) ]] 2>/dev/null; then
 	echo "......MHSM endpoint OK"
 else
-	echo "MHSM ${mhsm_name} doesn't exist. Please follow instructions to set it up first:"
-	echo ""
-	echo "https://learn.microsoft.com/en-us/azure/key-vault/managed-hsm/quick-create-cli"
+	echo "Azure akv resource endpoint doesn't exist. Please refer to documentation instructions to set it up first:"
 	exit 1
 fi
 
@@ -37,11 +38,11 @@ fi
 
 if [[ -z "${MANAGED_IDENTITY}" ]]; then
 	echo "Error: Env MANAGED_IDENTITY is not set. Please assign principal ID of the managed identity that will have read access to the key. To create a managed identity:"
-	echo "   az identity create -g <resource-group-name> -n <identity-name>"
+	echo "az identity create -g <resource-group-name> -n <identity-name>"
 	exit 1
 fi
 
-policy_file_name="${key_name}-release-policy.json"
+policy_file_name="${KEY_NAME}-release-policy.json"
 
 echo { \"anyOf\":[ { \"authority\":\"https://${MAA_ENDPOINT}\", \"allOf\":[ > ${policy_file_name}
 echo '{"claim":"x-ms-attestation-type", "equals":"sevsnpvm"},' >> ${policy_file_name}
@@ -56,28 +57,32 @@ fi
 echo {\"claim\":\"x-ms-compliance-status\", \"equals\":\"azure-signed-katacc-uvm\"}, >> ${policy_file_name}
 
 
-echo '] } ], "version":"0.2" }' >> ${policy_file_name}
+echo '] } ], "version":"1.0.0" }' >> ${policy_file_name}
 echo "......Generated key release policy ${policy_file_name}"
 
 # Create RSA key
-az keyvault key create --id https://${mhsm_name}.managedhsm.azure.net/keys/${key_name} --ops wrapKey unwrapkey encrypt decrypt --kty RSA-HSM --size 3072 --exportable --policy ${policy_file_name}
-echo "......Created RSA key in ${mhsm_name}"
+az keyvault key create --id https://$AZURE_AKV_RESOURCE_ENDPOINT/keys/${KEY_NAME} --ops wrapKey unwrapkey encrypt decrypt --kty RSA-HSM --size 3072 --exportable --policy ${policy_file_name}
+echo "......Created RSA key in ${AZURE_AKV_RESOURCE_ENDPOINT}"
 
-# Download the public key
-public_key_file=${key_name}-pub.pem
+
+# # Download the public key
+public_key_file=${KEY_NAME}-pub.pem
 rm -f ${public_key_file}
-az keyvault key download --hsm-name ${mhsm_name} -n ${key_name} -f ${public_key_file}
-echo "......Downloaded the public key to ${public_key_file}"
 
-# Assign access role to MSI
-az keyvault role assignment create --hsm-name ${mhsm_name} --assignee ${MANAGED_IDENTITY} --role "Managed HSM Crypto User" --scope /keys/${key_name} | true
-echo "......Assigned key read permission to managed identity ${MANAGED_IDENTITY}"
+if [[ "$AZURE_AKV_RESOURCE_ENDPOINT" == *".vault.azure.net" ]]; then
+    az keyvault key download --vault-name ${key_vault_name} -n ${KEY_NAME} -f ${public_key_file}
+	echo "......Downloaded the public key to ${public_key_file}"
+elif [[ "$AZURE_AKV_RESOURCE_ENDPOINT" == *".managedhsm.azure.net" ]]; then
+
+    az keyvault key download --hsm-name ${key_vault_name} -n ${KEY_NAME} -f ${public_key_file}
+	echo "......Downloaded the public key to ${public_key_file}"
+fi
 
 # generate key info file
-key_info_file=${key_name}-info.json
+key_info_file=${KEY_NAME}-info.json
 echo {  > ${key_info_file}
 echo \"public_key_path\": \"${public_key_file}\", >> ${key_info_file}
-echo \"kms_endpoint\": \"${mhsm_name}.managedhsm.azure.net\", >> ${key_info_file}
+echo \"kms_endpoint\": \"$AZURE_AKV_RESOURCE_ENDPOINT\", >> ${key_info_file}
 echo \"attester_endpoint\": \"${MAA_ENDPOINT}\" >> ${key_info_file}
 echo }  >> ${key_info_file}
 echo "......Generated key info file ${key_info_file}"
