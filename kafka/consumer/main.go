@@ -82,8 +82,11 @@ func main() {
 			Encrypted: keyEnabled,
 		}
 		data.Message = <-cgh.messages
-		fmt.Printf("got / request\n")
-		t.Execute(w, data)
+		fmt.Printf("got / request")
+		err := t.Execute(w, data)
+		if err != nil {
+			log.Printf("Unable to serve webpage: %s", err.Error())
+		}
 	}
 
 	<-cgh.ready // Await till the consumer has been set up
@@ -108,9 +111,9 @@ func main() {
 	// waiting for the end of all messages received or an OS signal
 	select {
 	case <-cgh.end:
-		log.Printf("Finished to receive %d messages\n", 100)
+		log.Printf("Finished to receive %d messages", 100)
 	case sig := <-signals:
-		log.Printf("Got signal: %v\n", sig)
+		log.Printf("Got signal: %v", sig)
 		close(cgh.done)
 	}
 
@@ -132,12 +135,12 @@ type consumerGroupHandler struct {
 
 func (cgh *consumerGroupHandler) Setup(sarama.ConsumerGroupSession) error {
 	close(cgh.ready)
-	log.Printf("Consumer group handler setup\n")
+	log.Printf("Consumer group handler setup")
 	return nil
 }
 
 func (cgh *consumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error {
-	log.Printf("Consumer group handler cleanup\n")
+	log.Printf("Consumer group handler cleanup")
 	return nil
 }
 
@@ -196,12 +199,12 @@ func (cgh *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSessio
 			if key != nil {
 				annotationBytes, err := base64.StdEncoding.DecodeString(string(message.Value))
 				if err != nil {
-					log.Printf("error decoding message value %q\n", err.Error())
+					log.Printf("error decoding message value %q", err.Error())
 				}
 
 				plaintext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, annotationBytes, nil)
 				if err != nil {
-					log.Printf("error decrypting message %q\n", err.Error())
+					log.Printf("error decrypting message %q", err.Error())
 				}
 
 				messageContents = string(plaintext)
@@ -243,27 +246,27 @@ func RSAPrivateKeyFromJWK(key1 []byte) (*rsa.PrivateKey, error) {
 	}
 
 	if err := json.Unmarshal(key1, &jwkData); err != nil {
-		fmt.Println("")
+		log.Println(err.Error())
 	}
 	n, err := base64.RawURLEncoding.DecodeString(jwkData.N)
 	if err != nil {
-		fmt.Println("")
+		log.Println(err.Error())
 	}
 	e, err := base64.RawURLEncoding.DecodeString(jwkData.E)
 	if err != nil {
-		fmt.Println("")
+		log.Println(err.Error())
 	}
 	d, err := base64.RawURLEncoding.DecodeString(jwkData.D)
 	if err != nil {
-		fmt.Println("")
+		log.Println(err.Error())
 	}
 	p, err := base64.RawURLEncoding.DecodeString(jwkData.P)
 	if err != nil {
-		fmt.Println("")
+		log.Println(err.Error())
 	}
 	q, err := base64.RawURLEncoding.DecodeString(jwkData.Q)
 	if err != nil {
-		fmt.Println("")
+		log.Println(err.Error())
 	}
 
 	key := &rsa.PrivateKey{
