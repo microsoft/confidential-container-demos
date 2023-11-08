@@ -58,10 +58,11 @@ metadata:
   name: consumer
   namespace: kafka
 spec:
+  type: LoadBalancer
   selector:
     app.kubernetes.io/name: kafka-golang-consumer
   ports:
     - protocol: TCP
-      port: 3333
+      port: 80
       targetPort: kafka-consumer
 
