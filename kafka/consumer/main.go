@@ -13,7 +13,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -23,6 +22,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/Shopify/sarama"
 )
@@ -30,6 +30,7 @@ import (
 var topic = getenv("TOPIC", "my-topic")
 var brokers = getenv("BROKERS", "my-cluster-kafka-bootstrap:9092")
 var consumergroup = getenv("CONSUMERGROUP", "strimzikafkaconsumergroupid")
+var logLocation = getenv("LOG_FILE", "")
 
 var keyEnabled bool
 
@@ -42,6 +43,14 @@ func getenv(key, fallback string) string {
 }
 
 func main() {
+	if len(logLocation) > 0 {
+		f, err := os.OpenFile(logLocation, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0740)
+		if err != nil {
+			log.Printf("Unable to open file log location: %s", err.Error())
+		}
+		log.SetOutput(f)
+	}
+
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	cg, _ := inClusterKafkaConfig()
@@ -81,8 +90,13 @@ func main() {
 		}{
 			Encrypted: keyEnabled,
 		}
-		data.Message = <-cgh.messages
-		fmt.Printf("got / request")
+		timer := time.NewTimer(10 * time.Second)
+		select {
+		case data.Message = <-cgh.messages:
+			log.Printf("got / request")
+		case <-timer.C:
+			data.Message = "Timeout waiting to read data from Kafka.  Please refresh the page to try again."
+		}
 		err := t.Execute(w, data)
 		if err != nil {
 			log.Printf("Unable to serve webpage: %s", err.Error())
@@ -101,9 +115,9 @@ func main() {
 	go func() {
 		err = http.ListenAndServe(":3333", nil)
 		if errors.Is(err, http.ErrServerClosed) {
-			fmt.Printf("server closed\n")
+			log.Printf("server closed\n")
 		} else if err != nil {
-			fmt.Printf("error starting server: %s\n", err)
+			log.Printf("error starting server: %s\n", err)
 			os.Exit(1)
 		}
 	}()
