@@ -91,6 +91,9 @@ func main() {
 
 	http.HandleFunc("/", getRoot)
 	http.Handle("/web/", http.StripPrefix("/web", http.FileServer(http.Dir("/web"))))
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "/web/favicon.ico")
+	})
 
 	go func() {
 		err = http.ListenAndServe(":3333", nil)
