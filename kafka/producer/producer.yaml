@@ -13,7 +13,7 @@ spec:
     - image: "fishersnpregistry.azurecr.io/kafka-producer-bugbash:1.0"
       name: kafka-producer
       command:
-        - /kafka
+        - /produce
       env:
         - name: TOPIC
           value: kafka-demo-topic
