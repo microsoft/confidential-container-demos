@@ -205,8 +205,11 @@ func (cgh *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSessio
 				log.Printf("Message received: value=%s, partition=%d, offset=%d", plaintext, message.Partition, message.Offset)
 
 			} else {
+				select {
+				case cgh.messages <- string(message.Value):
+				default:
+				}
 				log.Printf("Message received: value=%s, partition=%d, offset=%d", message.Value, message.Partition, message.Offset)
-				cgh.messages <- string(message.Value)
 			}
 
 			session.MarkMessage(message, "")
