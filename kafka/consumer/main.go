@@ -46,6 +46,12 @@ func main() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	cg, _ := inClusterKafkaConfig()
 
+	t, err := template.ParseFiles("/webtemplates/index.html")
+	if err != nil {
+		log.Printf("Error parsing templates: %s", err.Error())
+		os.Exit(1)
+	}
+
 	consumerGroup, err := sarama.NewConsumerGroup([]string{brokers}, consumergroup, cg)
 	if err != nil {
 		log.Printf("Error creating the Sarama consumer: %v", err)
@@ -54,15 +60,9 @@ func main() {
 
 	cgh := &consumerGroupHandler{
 		ready:    make(chan struct{}),
-		end:      make(chan int, 1),
+		end:      make(chan struct{}),
 		done:     make(chan struct{}),
 		messages: make(chan string),
-	}
-
-	t, err := template.ParseFiles("/webtemplates/index.html")
-	if err != nil {
-		log.Printf("Error parsing templates: %s", err.Error())
-		return
 	}
 
 	ctx := context.Background()
@@ -128,7 +128,7 @@ func main() {
 // struct defining the handler for the consuming Sarama method
 type consumerGroupHandler struct {
 	ready    chan struct{}
-	end      chan int
+	end      chan struct{}
 	done     chan struct{}
 	messages chan string
 }
