@@ -169,6 +169,7 @@ func retrieveKey() (*rsa.PrivateKey, error) {
 	if err != nil {
 		log.Printf("construct private rsa key from jwk key error: %s", err.Error())
 	}
+	keyEnabled = true
 
 	return key, nil
 
@@ -180,13 +181,15 @@ func (cgh *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSessio
 		log.Printf("not able to retrieve key: %s", err.Error())
 	}
 
+	messageChan := claim.Messages()
 	for {
 		select {
-		case message, ok := <-claim.Messages():
+		case message, ok := <-messageChan:
 			if !ok {
 				log.Printf("message channel was closed")
 				return nil
 			}
+			messageContents := ""
 			if key != nil {
 				annotationBytes, err := base64.StdEncoding.DecodeString(string(message.Value))
 				if err != nil {
@@ -198,19 +201,16 @@ func (cgh *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSessio
 					log.Printf("error decrypting message %q\n", err.Error())
 				}
 
-				select {
-				case cgh.messages <- string(plaintext):
-				default:
-				}
-				log.Printf("Message received: value=%s, partition=%d, offset=%d", plaintext, message.Partition, message.Offset)
-
+				messageContents = string(plaintext)
 			} else {
-				select {
-				case cgh.messages <- string(message.Value):
-				default:
-				}
-				log.Printf("Message received: value=%s, partition=%d, offset=%d", message.Value, message.Partition, message.Offset)
+				messageContents = string(message.Value)
 			}
+
+			select {
+			case cgh.messages <- messageContents:
+			default:
+			}
+			log.Printf("Message received: value=%s, partition=%d, offset=%d", messageContents, message.Partition, message.Offset)
 
 			session.MarkMessage(message, "")
 		// Should return when `session.Context()` is done.
@@ -274,7 +274,6 @@ func RSAPrivateKeyFromJWK(key1 []byte) (*rsa.PrivateKey, error) {
 			new(big.Int).SetBytes(q),
 		},
 	}
-	keyEnabled = true
 
 	return key, nil
 }
