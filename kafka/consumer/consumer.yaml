@@ -26,7 +26,7 @@ spec:
       volumeMounts:
         - mountPath: /opt/confidential-containers/share/kata-containers/reference-info-base64d
           name: endor-loc
-    - image: "fishersnpregistry.azurecr.io/fisher/kafka-consumer:v1.1"
+    - image: "fishersnpregistry.azurecr.io/kafka-consumer-bugbash:1.2"
       imagePullPolicy: Always
       name: kafka-golang-consumer
       env:
@@ -39,7 +39,7 @@ spec:
         - name: TOPIC
           value: kafka-demo-topic
       command:
-        - /kafka
+        - /consume
       ports:
         - containerPort: 3333
           name: kafka-consumer
