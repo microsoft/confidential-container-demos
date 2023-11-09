@@ -55,7 +55,7 @@ fi
 
 
 echo {\"claim\":\"x-ms-compliance-status\", \"equals\":\"azure-signed-katacc-uvm\"}, >> ${policy_file_name}
-
+echo {\"claim\":\"x-ms-sevsnpvm-is-debuggable\", \"equals\":\"false\"}, >> ${policy_file_name}
 
 echo '] } ], "version":"1.0.0" }' >> ${policy_file_name}
 echo "......Generated key release policy ${policy_file_name}"
