@@ -5,16 +5,12 @@
 
 FROM golang:1.21 as builder
 
-RUN apt-get -y update && \
-   apt-get -y install zip jq libxml2
-
 WORKDIR /app
 COPY go.* ./
 RUN go mod download
 
 COPY . ./
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly  -v -o produce
-
 FROM mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0
 COPY --from=builder /app/produce /produce
 CMD ["/produce"]
