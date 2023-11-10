@@ -21,7 +21,6 @@ COPY main.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly  -v -o consume
 
 FROM mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0
-#RUN apk add --no-cache ca-certificates
 
 COPY web /web
 COPY webtemplates /webtemplates
