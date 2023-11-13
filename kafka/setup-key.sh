@@ -24,11 +24,20 @@ AZURE_AKV_RESOURCE_ENDPOINT=${2#https}
 key_vault_name=$(echo "$AZURE_AKV_RESOURCE_ENDPOINT" | cut -d. -f1)
 echo "Key vault name is ${key_vault_name}"
 
-if [[ $(az keyvault list | grep "Microsoft.KeyVault/vaults/${key_vault_name}" ) ]] 2>/dev/null; then
-	echo "AKV endpoint OK"
-else
-	echo "Azure akv resource endpoint doesn't exist. Please refer to documentation instructions to set it up first:"
-	exit 1
+if [[ "$AZURE_AKV_RESOURCE_ENDPOINT" == *".vault.azure.net" ]]; then
+	if [[ $(az keyvault list | grep "Microsoft.KeyVault/vaults/${key_vault_name}" ) ]] 2>/dev/null; then
+		echo "AKV endpoint OK"
+	else
+		echo "Azure akv resource endpoint doesn't exist. Please refer to documentation instructions to set it up first:"
+		exit 1
+	fi
+elif [[ "$AZURE_AKV_RESOURCE_ENDPOINT" == *".managedhsm.azure.net" ]]; then
+	if [[ $(az keyvault list | grep "Microsoft.KeyVault/managedHSMs/${key_vault_name}" ) ]] 2>/dev/null; then
+		echo "AKV endpoint OK"
+	else
+		echo "Azure akv resource endpoint doesn't exist. Please refer to documentation instructions to set it up first:"
+		exit 1
+	fi
 fi
 
 if [[ -z "${MAA_ENDPOINT}" ]]; then
