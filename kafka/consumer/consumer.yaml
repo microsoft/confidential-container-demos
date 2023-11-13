@@ -20,7 +20,7 @@ spec:
       command:
         - /bin/aasp
       volumeMounts:
-        - mountPath: /opt/confidential-containers/share/kata-containers/reference-info-base64d
+        - mountPath: /opt/confidential-containers/share/kata-containers/reference-info-base64
           name: endor-loc
     - image: "fishersnpregistry.azurecr.io/kafka-consumer:v8.0"
       imagePullPolicy: Always
@@ -46,7 +46,7 @@ spec:
   volumes:
     - name: endor-loc
       hostPath:
-        path: /opt/confidential-containers/share/kata-containers/reference-info-base64d
+        path: /opt/confidential-containers/share/kata-containers/reference-info-base64
 ---
 apiVersion: v1
 kind: Service
