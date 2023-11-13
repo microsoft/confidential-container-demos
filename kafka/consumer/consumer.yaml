@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/name: kafka-golang-consumer
 spec:
   serviceAccountName: workload-identity-sa
-  runtimeClassName: kata-cc
+  runtimeClassName: kata-cc-isolation
   containers:
     - image: "fishersnpregistry.azurecr.io/aasp:v1.0"
       imagePullPolicy: Always
