@@ -8,7 +8,7 @@
 
 Apache Kafka is a powerful distributed data store designed for efficiently ingesting and processing streaming data in real-time. It offers numerous advantages such as scalability, data durability, and low latency. However, it's essential to note that an out-of-the-box Apache Kafka installation does not provide data encryption at rest. By default, all data traffic is transmitted in plain text, potentially allowing unauthorized access to sensitive information. While Apache Kafka does support data encryption in transit using SSL or SASL_SSL, as of today, data at rest encryption is currently not natively supported. To ensure end-to-end data security, including data in transit, at rest, heap dumps, and log files, users need to implement end-to-end encryption. 
 
-In this example, we demonstrate the implementation of end-to-end encryption for Kafka messages using encryption keys managed by Azure Managed Hardware Security Modules (mHSM). The key is only released when the Kafka consumer runs within a confidential container environment with Azure Attestation Secret Provisioning container injected into the pod.
+In this example, we demonstrate the implementation of end-to-end encryption for Kafka messages using encryption keys managed by AKV/mHSM. The key is only released when the Kafka consumer runs within a confidential container environment with Azure Attestation Secret Provisioning container injected into the pod.
 
 This example comprises three components: 
 
@@ -107,7 +107,9 @@ az identity federated-credential create --name ${FEDERATED_IDENTITY_CREDENTIAL_N
 
 #### Setup dependency resources (AKV/mHSM)
 
-Setup dependency resources (AKV/mHSM):  The user needs to instantiate an Azure Key Vault resource that supports storing keys in an HSM: a [Premium vault](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or an [MHSM resource](https://docs.microsoft.com/en-us/azure/key-vault/managed-hsm/overview). Set the value of [SkrClientAKVEndpoint](consumer/consumer.yaml#L33) in the consumer.yaml file with the full url of the AKV/mHSM resource.
+Setup dependency resources (AKV/mHSM):  The user needs to instantiate an [premium Azure Key Vault(AKV)](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or a [Managed Hardware Security Module(mHSM)]((https://docs.microsoft.com/en-us/azure/key-vault/managed-hsm/overview)) resource that supports storing keys in an HSM. Set the value of [SkrClientAKVEndpoint](consumer/consumer.yaml#L33) in the consumer.yaml file with the full url of the AKV/mHSM resource created. 
+Important NOTE: In this demo, we include both AKV and mHSM related instructions and the script for setting up RSA asymmetric keys supports both AKV and mHSM. 
+Although using an mHSM is recommended for production, due to its high cost, we recommend using AKV for running this demo. 
 
 #### Setup role access for the managed identity 
 
@@ -181,7 +183,7 @@ $ bash setup-key.sh "kafka-encryption-demo" <akv/mHSM url>
 
 The script generates an RSA asymmetric key pair (public and private keys) in mHSM under the [SkrCLientKID](consumer/consumer.yaml#L29), creates a key release policy with user-configured data, uploads the key release policy to the Azure mHSM under the `SkrCLientKID` and downloads the public key. Once the public key is downloaded, replace the [PUBKEY](producer/producer.yaml#L22) env var on the producer YAML file with the public key.
 
-Verify the keys have been successfully uploaded to mHSM. <Name of mHSM> is the name of the AKV/mHSM. Eg. If you have a mHSM and its full url is `my-mHSM.managedhsm.azure.net`, then my-mHSM is <Name of mHSM>
+Verify the keys have been successfully uploaded to the AKV. <Name of AKV> is the name of the AKV. Eg. If you have a AKV and its full url is `my-akv.vault.azure.net`, then my-akv is <Name of AKV>
 
 ```bash 
 $ az account set --subscription "Subscription ID"
