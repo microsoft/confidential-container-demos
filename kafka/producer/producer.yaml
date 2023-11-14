@@ -10,7 +10,7 @@ metadata:
   namespace: kafka
 spec:
   containers:
-    - image: "fishersnpregistry.azurecr.io/kafka-producer:v16.0"
+    - image: "mcr.microsoft.com/acc/samples/kafka/producer:1.0"
       name: kafka-producer
       command:
         - /produce

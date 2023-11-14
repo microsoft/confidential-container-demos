@@ -22,7 +22,7 @@ spec:
       volumeMounts:
         - mountPath: /opt/confidential-containers/share/kata-containers/reference-info-base64
           name: endor-loc
-    - image: "fishersnpregistry.azurecr.io/kafka-consumer:v8.0"
+    - image: "mcr.microsoft.com/acc/samples/kafka/consumer:1.0"
       imagePullPolicy: Always
       name: kafka-golang-consumer
       env:
