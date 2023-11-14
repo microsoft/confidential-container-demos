@@ -8,7 +8,7 @@
 
 Apache Kafka is a powerful distributed data store designed for efficiently ingesting and processing streaming data in real-time. It offers numerous advantages such as scalability, data durability, and low latency. However, it's essential to note that an out-of-the-box Apache Kafka installation does not provide data encryption at rest. By default, all data traffic is transmitted in plain text, potentially allowing unauthorized access to sensitive information. While Apache Kafka does support data encryption in transit using SSL or SASL_SSL, as of today, data at rest encryption is currently not natively supported. To ensure end-to-end data security, including data in transit, at rest, heap dumps, and log files, users need to implement end-to-end encryption. 
 
-In this example, we demonstrate the implementation of end-to-end encryption for Kafka messages using encryption keys managed by AKV/mHSM. The key is only released when the Kafka consumer runs within a confidential container environment with Azure Attestation Secret Provisioning container injected into the pod.
+In this example, we demonstrate the implementation of end-to-end encryption for Kafka messages using encryption keys managed by AKV/mHSM. The key is only released when the Kafka consumer runs within a confidential container environment with Secure Key Release(skr) container injected into the pod.
 
 This example comprises three components: 
 
@@ -202,7 +202,7 @@ $ kubectl apply –f consumer.yaml
 $ kubectl apply –f producer.yaml  
 $ kubectl get svc consumer -n kafka 
 ```
-Copy and paste the IP address of the consumer service into your web browser and observe the decrypted messages. You should also attempt to run the consumer as a regular Kubernetes pod by removing the aasp container and kata-cc runtime class spec. Since we are not running the consumer with kata-cc runtime class, we no longer need the policy. Remove the entire policy. Observe the messages again on the web UI after redeploying the workload. Messages will appear as base64-encoded ciphertext because the private encryption key cannot be retrieved. The key cannot be retrieved because the consumer is no longer running in a confidential environment, and the aasp container is missing, preventing decryption of messages.
+Copy and paste the IP address of the consumer service into your web browser and observe the decrypted messages. You should also attempt to run the consumer as a regular Kubernetes pod by removing the skr container and kata-cc runtime class spec. Since we are not running the consumer with kata-cc runtime class, we no longer need the policy. Remove the entire policy. Observe the messages again on the web UI after redeploying the workload. Messages will appear as base64-encoded ciphertext because the private encryption key cannot be retrieved. The key cannot be retrieved because the consumer is no longer running in a confidential environment, and the skr container is missing, preventing decryption of messages.
 
 This example demonstrates how to enhance the security of your Apache Kafka cluster/application by implementing end-to-end encryption for both data in transit and at rest using confidential kata-cc AKS container, allowing key retrieval from Azure mHSM, thus safeguarding your data from potential security threats.
 
