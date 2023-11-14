@@ -23,12 +23,12 @@ KEY_NAME=$1
 # if https://, http:// and trailing / exists, remove them from url 
 AZURE_AKV_RESOURCE_ENDPOINT=${2#$https}
 AZURE_AKV_RESOURCE_ENDPOINT=${AZURE_AKV_RESOURCE_ENDPOINT#$http}
-AZURE_AKV_RESOURCE_ENDPOINT=${AZURE_AKV_RESOURCE_ENDPOINT%/}
+AZURE_AKV_RESOURCE_ENDPOINT=${AZURE_AKV_RESOURCE_ENDPOINT%%/*}
 
 
 MAA_ENDPOINT=${MAA_ENDPOINT#$https}
 MAA_ENDPOINT=${MAA_ENDPOINT#$http}
-MAA_ENDPOINT=${MAA_ENDPOINT%/}
+MAA_ENDPOINT=${MAA_ENDPOINT%%/*}
 
 key_vault_name=$(echo "$AZURE_AKV_RESOURCE_ENDPOINT" | cut -d. -f1)
 echo "Key vault name is ${key_vault_name}"
@@ -68,13 +68,13 @@ echo { \"anyOf\":[ { \"authority\":\"https://${MAA_ENDPOINT}\", \"allOf\":[ > ${
 echo '{"claim":"x-ms-attestation-type", "equals":"sevsnpvm"},' >> ${policy_file_name}
 
 if [[ -z "${WORKLOAD_MEASUREMENT}" ]]; then
-	echo "Warning: Env WORKLOAD_MEASUREMENT is not set. To better protect your key, consider adding it to your key release policy"
+	echo "Warning: Env WORKLOAD_MEASUREMENT is not set. Set this to condition releasing your key on your security policy matching the expected value.  Recommended for production workloads."
 else
 	echo {\"claim\":\"x-ms-sevsnpvm-hostdata\", \"equals\":\"${WORKLOAD_MEASUREMENT}\"}, >> ${policy_file_name}
 fi
 
 
-#echo {\"claim\":\"x-ms-compliance-status\", \"equals\":\"azure-signed-katacc-uvm\"}, >> ${policy_file_name}
+echo {\"claim\":\"x-ms-compliance-status\", \"equals\":\"azure-signed-katacc-uvm\"}, >> ${policy_file_name}
 echo {\"claim\":\"x-ms-sevsnpvm-is-debuggable\", \"equals\":\"false\"}, >> ${policy_file_name}
 
 echo '] } ], "version":"1.0.0" }' >> ${policy_file_name}
