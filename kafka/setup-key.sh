@@ -17,8 +17,10 @@ if [ $# -ne 2 ] ; then
 fi
 
 https="https://"
+http="http://"
 KEY_NAME=$1
 AZURE_AKV_RESOURCE_ENDPOINT=${2#$https}
+AZURE_AKV_RESOURCE_ENDPOINT=${AZURE_AKV_RESOURCE_ENDPOINT#$http}
 
 
 key_vault_name=$(echo "$AZURE_AKV_RESOURCE_ENDPOINT" | cut -d. -f1)
