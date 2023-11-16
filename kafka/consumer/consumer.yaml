@@ -27,13 +27,13 @@ spec:
       name: kafka-golang-consumer
       env:
         - name: SkrClientKID
-          value: kafka-encryption-demo
+          value: $SkrClientKID
         - name: SkrClientMAAEndpoint
-          value: sharedeus2.eus2.test.attest.azure.net
+          value: $SkrClientMAAEndpoint
         - name: SkrClientAKVEndpoint
-          value: ""
+          value: $SkrClientAKVEndpoint
         - name: TOPIC
-          value: kafka-demo-topic
+          value: $TOPIC
       command:
         - /consume
       ports:

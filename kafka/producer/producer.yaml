@@ -21,9 +21,7 @@ spec:
           value: "Azure Confidential Computing"
         - name: PUBKEY
           value: |-
-            -----BEGIN PUBLIC KEY-----
-            MIIBojAN***AE=
-            -----END PUBLIC KEY-----
+            $PUBKEY
       resources:
         limits:
           memory: 1Gi

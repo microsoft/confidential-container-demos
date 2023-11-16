@@ -26,9 +26,9 @@ AZURE_AKV_RESOURCE_ENDPOINT=${AZURE_AKV_RESOURCE_ENDPOINT#$http}
 AZURE_AKV_RESOURCE_ENDPOINT=${AZURE_AKV_RESOURCE_ENDPOINT%%/*}
 
 
-MAA_ENDPOINT=${MAA_ENDPOINT#$https}
-MAA_ENDPOINT=${MAA_ENDPOINT#$http}
-MAA_ENDPOINT=${MAA_ENDPOINT%%/*}
+SkrClientMAAEndpoint=${SkrClientMAAEndpoint#$https}
+SkrClientMAAEndpoint=${SkrClientMAAEndpoint#$http}
+SkrClientMAAEndpoint=${SkrClientMAAEndpoint%%/*}
 
 key_vault_name=$(echo "$AZURE_AKV_RESOURCE_ENDPOINT" | cut -d. -f1)
 echo "Key vault name is ${key_vault_name}"
@@ -49,8 +49,8 @@ elif [[ "$AZURE_AKV_RESOURCE_ENDPOINT" == *".managedhsm.azure.net" ]]; then
 	fi
 fi
 
-if [[ -z "${MAA_ENDPOINT}" ]]; then
-	echo "Error: Env MAA_ENDPOINT is not set. Please set up your own MAA instance or select from a region where MAA is offered (e.g. sharedeus2.eus2.attest.azure.net):"
+if [[ -z "${SkrClientMAAEndpoint}" ]]; then
+	echo "Error: Env SkrClientMAAEndpoint is not set. Please set up your own MAA instance or select from a region where MAA is offered (e.g. sharedeus2.eus2.attest.azure.net):"
 	echo ""
 	echo "https://azure.microsoft.com/en-us/explore/global-infrastructure/products-by-region/?products=azure-attestation"
 	exit 1
@@ -64,7 +64,7 @@ fi
 
 policy_file_name="${KEY_NAME}-release-policy.json"
 
-echo { \"anyOf\":[ { \"authority\":\"https://${MAA_ENDPOINT}\", \"allOf\":[ > ${policy_file_name}
+echo { \"anyOf\":[ { \"authority\":\"https://${SkrClientMAAEndpoint}\", \"allOf\":[ > ${policy_file_name}
 echo '{"claim":"x-ms-attestation-type", "equals":"sevsnpvm"},' >> ${policy_file_name}
 
 if [[ -z "${WORKLOAD_MEASUREMENT}" ]]; then
@@ -93,7 +93,6 @@ if [[ "$AZURE_AKV_RESOURCE_ENDPOINT" == *".vault.azure.net" ]]; then
     az keyvault key download --vault-name ${key_vault_name} -n ${KEY_NAME} -f ${public_key_file}
 	echo "......Downloaded the public key to ${public_key_file}"
 elif [[ "$AZURE_AKV_RESOURCE_ENDPOINT" == *".managedhsm.azure.net" ]]; then
-
     az keyvault key download --hsm-name ${key_vault_name} -n ${KEY_NAME} -f ${public_key_file}
 	echo "......Downloaded the public key to ${public_key_file}"
 fi
@@ -103,7 +102,7 @@ key_info_file=${KEY_NAME}-info.json
 echo {  > ${key_info_file}
 echo \"public_key_path\": \"${public_key_file}\", >> ${key_info_file}
 echo \"kms_endpoint\": \"$AZURE_AKV_RESOURCE_ENDPOINT\", >> ${key_info_file}
-echo \"attester_endpoint\": \"${MAA_ENDPOINT}\" >> ${key_info_file}
+echo \"attester_endpoint\": \"${SkrClientMAAEndpoint}\" >> ${key_info_file}
 echo }  >> ${key_info_file}
 echo "......Generated key info file ${key_info_file}"
 echo "......Key setup successful!"
