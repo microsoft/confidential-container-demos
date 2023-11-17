@@ -16,7 +16,7 @@ spec:
       ports:
         - containerPort: 80
         - containerPort: 443
-  runtimeClassName: kata-cc
+  runtimeClassName: kata-cc-isolation
 ---
 kind: Service
 apiVersion: v1
