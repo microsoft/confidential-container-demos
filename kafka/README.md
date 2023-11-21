@@ -105,6 +105,15 @@ Create the federated identity credential between the managed identity, service a
 az identity federated-credential create --name ${FEDERATED_IDENTITY_CREDENTIAL_NAME} --identity-name ${USER_ASSIGNED_IDENTITY_NAME} --resource-group ${RESOURCE_GROUP} --issuer ${AKS_OIDC_ISSUER} --subject system:serviceaccount:${SERVICE_ACCOUNT_NAMESPACE}:${SERVICE_ACCOUNT_NAME} 
 ```
 
+#### Obtain Attestation Endpoint
+
+Below are the MAA endpoints for the four regions Confidential Container AKS is currently available. 
+
+East US: sharedeus.eus.attest.azure.net	
+West US: sharedwus.wus.attest.azure.net
+North Europe: sharedneu.neu.attest.azure.net
+West Europe: sharedweu.weu.attest.azure.net
+
 #### Setup dependency resources (AKV/mHSM)
 
 Setup dependency resources (AKV/mHSM):  The user needs to instantiate an [premium Azure Key Vault(AKV)](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or a [Managed Hardware Security Module(mHSM)]((https://docs.microsoft.com/en-us/azure/key-vault/managed-hsm/overview)) resource that supports storing keys in an HSM. Set the value of [SkrClientAKVEndpoint](consumer/consumer.yaml#L33) in the consumer.yaml file with the full url of the AKV/mHSM resource created. 
@@ -174,7 +183,7 @@ Use the provided script [setup-key.sh](setup-key.sh) to prepare encryption key f
 
 Run the script: 
 ```bash 
-$ export MAA_ENDPOINT="sharedeus2.eus2.test.attest.azure.net"
+$ export MAA_ENDPOINT="sharedeus.eus.attest.azure.net"
 # <akv/mHSM url> should have the following format
 # <akv-name>.vault.azure.net or <mHSM-name>.managedhsm.azure.net
 $ bash setup-key.sh "kafka-encryption-demo" <akv/mHSM url>
