@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -167,18 +168,26 @@ func retrieveKey() (*rsa.PrivateKey, error) {
 	var data = strings.NewReader("{\"maa_endpoint\": \"" + os.Getenv("SkrClientMAAEndpoint") + "\", \"akv_endpoint\": \"" + os.Getenv("SkrClientAKVEndpoint") + "\", \"kid\": \"" + os.Getenv("SkrClientKID") + "\"}")
 	req, err := http.NewRequest("POST", "http://localhost:8080/key/release", data)
 	if err != nil {
-
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
+	var bodyText []byte
+	if resp != nil && resp.Body != nil {
+		limitSize := resp.ContentLength
+		const mb134 = 1 << 27 //134MB
+		if limitSize < 1 || limitSize > mb134 {
+			limitSize = mb134
+		}
+		bodyText, _ = io.ReadAll(io.LimitReader(resp.Body, int64(limitSize)))
+		resp.Body.Close()
+	}
 	if err != nil {
+		log.Printf("Error response body from SKR: %s", bodyText)
 		return nil, err
 	}
-	defer resp.Body.Close()
-	bodyText, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	if resp.StatusCode < 200 || resp.StatusCode > 207 {
+		return nil, fmt.Errorf("unable to retrieve key from SKR.  Response Code %d.  Message %s", resp.StatusCode, string(bodyText))
 	}
 
 	if err := json.Unmarshal(bodyText, &datakey); err != nil {
