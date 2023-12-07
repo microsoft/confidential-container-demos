@@ -15,7 +15,7 @@ DEMO_DEFAULT_SkrClientMAAEndpoint=sharedeus2.eus2.test.attest.azure.net
 DEMO_DEFAULT_TOPIC=kafka-demo-topic
 
 
-SkrClientKID="kafka-encryption-demo20"
+SkrClientKID="kafka-encryption-demo"
 SkrClientMAAEndpoint=""
 TOPIC=""
 AKV_NAME=""
@@ -25,7 +25,7 @@ AKV_MHSM_RESOURCE_GROUP="acc-mhsm-rg"
 # This is the name of the resource group the cluster resides in
 export RESOURCE_GROUP="accct-mariner-kata-aks-testing" 
 # name of the cluster 
-export CLUSTER_NAME="nov7eastus" 
+export CLUSTER_NAME="skr-kafka-demo-rg-3195" 
 
 # Check workload idenitty enabled
 echo "Checking workload identity enablement on the cluster"
@@ -71,7 +71,7 @@ echo "Setting MANAGED_IDENTITY to $MANAGED_IDENTITY"
 #check kafka namespace exists and create
 result=$(kubectl get namespace kafka 2>&1 || true)
 if [[ $result == *"not found"* ]]; then
-    echo "kafka namespace not ofound. Create kafka namespace..."
+    echo "kafka namespace not found. Create kafka namespace..."
     kubectl create namespace kafka
 else
     echo "kafka namespace already exists."
@@ -83,25 +83,29 @@ cat <<EOF | kubectl apply -f -
 apiVersion: v1 
 kind: ServiceAccount 
 metadata: 
-  name: workload-identity-sa
-  namespace: kafka
+  annotations: 
+    azure.workload.identity/client-id: ${USER_ASSIGNED_CLIENT_ID} 
+  name: ${SERVICE_ACCOUNT_NAME} 
+  namespace: ${SERVICE_ACCOUNT_NAMESPACE} 
 EOF
 
 # check federated credential existence
 result=$(az identity federated-credential show --name ${FEDERATED_IDENTITY_CREDENTIAL_NAME} --identity-name ${USER_ASSIGNED_IDENTITY_NAME} --resource-group ${RESOURCE_GROUP} 2>&1 || true)
-if [[ $result == *"not found"* ]]; then
+if [[ $result == *$AKS_OIDC_ISSUER* ]]; then
+    echo "Federated identity already exists"
+else
     echo "Federated identity not found. Creating... "
     az identity federated-credential create --name ${FEDERATED_IDENTITY_CREDENTIAL_NAME} --identity-name ${USER_ASSIGNED_IDENTITY_NAME} --resource-group ${RESOURCE_GROUP} --issuer ${AKS_OIDC_ISSUER} --subject system:serviceaccount:${SERVICE_ACCOUNT_NAMESPACE}:${SERVICE_ACCOUNT_NAME} 
-else
-    echo "Federated identity already exists"
 fi
+
 
 # Create Kafka cluster regardless whether resources exist or not. 
 kubectl create -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka 2>&1 || true 
 # Apply the `Kafka` Cluster CR file
 kubectl apply -f https://strimzi.io/examples/latest/kafka/kafka-persistent-single.yaml -n kafka 2>&1 || true 
 
-
+echo "Sleep for 1 minute and wait for Kafka cluster to be creating and fully working..."
+sleep 60
 # Check if SkrClientKID is an empty string
 if [ -z "$SkrClientKID" ]; then
     # If it's empty, set its value to demo default DEMO_DEFAULT_SkrClientKID value 
@@ -170,6 +174,18 @@ sleep 2
 export PUBKEY=$(cat $SkrClientKID-pub.pem)
 rm producer-example.yaml 2>&1 || true 
 envsubst <producer/producer.yaml> producer-example.yaml
+
+sed -i '25s/^/            /' producer-example.yaml
+sed -i '26s/^/            /' producer-example.yaml
+sed -i '27s/^/            /' producer-example.yaml
+sed -i '28s/^/            /' producer-example.yaml
+sed -i '29s/^/            /' producer-example.yaml
+sed -i '30s/^/            /' producer-example.yaml
+sed -i '31s/^/            /' producer-example.yaml
+sed -i '32s/^/            /' producer-example.yaml
+sed -i '33s/^/            /' producer-example.yaml
+sed -i '34s/^/            /' producer-example.yaml
+
 
 kubectl delete -f consumer-example.yaml 2>&1 || true 
 sleep 5 
