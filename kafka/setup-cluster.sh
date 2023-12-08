@@ -37,28 +37,13 @@ else
     az extension add --name aks-preview
 fi
 
+az feature register --namespace "Microsoft.ContainerService" --name "KataCcIsolationPreview"
+sleep 5
+az feature show --namespace "Microsoft.ContainerService" --name "KataCcIsolationPreview"
+sleep 5
+az provider register --namespace "Microsoft.ContainerService"
+sleep 5
+
 random_number=$((RANDOM % 10000 + 1))
-az aks create --resource-group accct-mariner-kata-aks-testing --name skr-kafka-demo-rg-${random_number} --kubernetes-version 1.28.3 --os-sku AzureLinux --node-vm-size Standard_DC4as_cc_v5 --node-count 1 --enable-oidc-issuer --enable-workload-identity --generate-ssh-keys
+az aks create --resource-group accct-mariner-kata-aks-testing --name skr-kafka-demo-rg-${random_number} --kubernetes-version 1.28.3 --os-sku AzureLinux --node-vm-size Standard_DC4as_cc_v5 --workload-runtime KataCcIsolation --node-count 1 --generate-ssh-keys
 az aks get-credentials --resource-group accct-mariner-kata-aks-testing --name skr-kafka-demo-rg-${random_number} --overwrite-existing
-
-
-cat << EOF > runtimeClass-cc.yaml
-kind: RuntimeClass
-apiVersion: node.k8s.io/v1
-metadata:
-    name: kata-cc-isolation
-handler: kata-cc
-overhead:
-    podFixed:
-        memory: "160Mi"
-        cpu: "250m"
-scheduling:
-  nodeSelector:
-    katacontainers.io/kata-runtime: "true"
-EOF
-
-kubectl apply -f runtimeClass-cc.yaml
-
-
-NODE=$(kubectl get node -o=name)
-kubectl label ${NODE} katacontainers.io/kata-runtime=true

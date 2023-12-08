@@ -25,7 +25,7 @@ AKV_MHSM_RESOURCE_GROUP="acc-mhsm-rg"
 # This is the name of the resource group the cluster resides in
 export RESOURCE_GROUP="accct-mariner-kata-aks-testing" 
 # name of the cluster 
-export CLUSTER_NAME="skr-kafka-demo-rg-3195" 
+export CLUSTER_NAME="skr-kafka-demo-rg-3417" 
 
 # Check workload idenitty enabled
 echo "Checking workload identity enablement on the cluster"
@@ -195,3 +195,6 @@ sleep 10
 kubectl delete -f producer-example.yaml 2>&1 || true 
 sleep 5 
 kubectl apply -f producer-example.yaml 2>&1 || true 
+
+sleep 30 
+kubectl get svc consumer -n kafka
