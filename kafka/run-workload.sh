@@ -25,7 +25,7 @@ AKV_MHSM_RESOURCE_GROUP="acc-mhsm-rg"
 # This is the name of the resource group the cluster resides in
 export RESOURCE_GROUP="accct-mariner-kata-aks-testing" 
 # name of the cluster 
-export CLUSTER_NAME="skr-kafka-demo-rg-3417" 
+export CLUSTER_NAME="skr-kafka-demo-rg-7625" 
 
 # Check workload idenitty enabled
 echo "Checking workload identity enablement on the cluster"
@@ -104,8 +104,8 @@ kubectl create -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka 2
 # Apply the `Kafka` Cluster CR file
 kubectl apply -f https://strimzi.io/examples/latest/kafka/kafka-persistent-single.yaml -n kafka 2>&1 || true 
 
-echo "Sleep for 1 minute and wait for Kafka cluster to be creating and fully working..."
-sleep 60
+echo "Sleep for 1 minute and wait for Kafka cluster to be created and fully working..."
+sleep 120
 # Check if SkrClientKID is an empty string
 if [ -z "$SkrClientKID" ]; then
     # If it's empty, set its value to demo default DEMO_DEFAULT_SkrClientKID value 
@@ -197,4 +197,21 @@ sleep 5
 kubectl apply -f producer-example.yaml 2>&1 || true 
 
 sleep 30 
-kubectl get svc consumer -n kafka
+export ConsumerIP=$(kubectl get svc consumer -n kafka --output=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+max_retries=5
+retries=0
+while [ $retries -lt $max_retries ]; do
+    echo "Querying for the decrypted message from $ConsumerIP"
+    result=$(curl $ConsumerIP) 
+
+    if [[ $result == *"Azure Confidential Computing"* ]]; then
+        echo "Returned result is $result"
+        echo "Found decrypted message, workload is successful."
+        break  # Exit the loop on successful attempt
+    else
+        echo "Returned result is $result"
+        echo "Returned result does not contain text that indicates successful execution, retrying in 5 seconds..."
+        retries=$((retries+1))
+    fi
+    sleep 5
+done

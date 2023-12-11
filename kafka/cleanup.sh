@@ -15,5 +15,5 @@ kubectl -n kafka delete $(kubectl get strimzi -o name -n kafka) 2>&1 || true
 kubectl -n kafka delete -f 'https://strimzi.io/install/latest?namespace=kafka' 2>&1 || true 
 kubectl delete namespace kafka  2>&1 || true 
 
-az aks stop --resource-group accct-mariner-kata-aks-testing --name skr-kafka-demo-rg-3417 2>&1 || true 
-az aks delete --resource-group accct-mariner-kata-aks-testing --name skr-kafka-demo-rg-3417 --no-wait --yes 2>&1 || true 
+az aks stop --resource-group accct-mariner-kata-aks-testing --name skr-kafka-demo-rg-7625 2>&1 || true 
+az aks delete --resource-group accct-mariner-kata-aks-testing --name skr-kafka-demo-rg-7625 --no-wait --yes 2>&1 || true 
