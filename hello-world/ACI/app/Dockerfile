@@ -1,6 +1,6 @@
-FROM alpine:3.18.4
+FROM alpine:3.19
 RUN apk update && apk add python3 py3-pip --no-cache
-RUN pip3 install flask --no-cache-dir
+RUN pip3 install flask --no-cache-dir --break-system-packages
 
 # all commands start from this directory
 WORKDIR /app

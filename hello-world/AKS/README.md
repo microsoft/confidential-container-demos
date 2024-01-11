@@ -12,7 +12,7 @@ The container is hosted publicly on [Azure Container Registry](fishersnpregistry
 
 To build the container run `./get_verbose_report.sh` from the `hello-world` root directory. This also copies the verbose-report executable for the ACI example.
 
-Then run `docker build -t <image-name:tag> .` from the same directory.
+Then run `docker build -t <image-name:tag> .` from the same directory as the Dockerfile.
 
 ## Deploying to Azure Kubernetes Service
 

@@ -23,6 +23,7 @@ def index():
         st = os.stat(filename)
         os.chmod(filename, st.st_mode |
                  stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
     out = (subprocess.run(filename,
                           capture_output=True, encoding="UTF-8")).stdout
 
@@ -34,35 +35,29 @@ def index():
     out = []
     temp_out = ["<br>"]
     counter = 0
-    start_flag = False
     for item in formatted_text:
-        # there are some headers before the actual data we want to display
-        if "AMD" in item:
-            start_flag = True
+        # add a line break before and after each header
+        if item.endswith(":"):
+            temp_out.append(item)
+            temp_out.append("<br>")
+            # bold the header
+            out.append("<strong>")
+            out.append(" ".join(temp_out))
+            out.append("</strong>")
+            temp_out = ["<br>"]
+            counter = 0
 
-        if start_flag:
-            # add a line break before and after each header
-            if item.endswith(":"):
-                temp_out.append(item)
-                temp_out.append("<br>")
-                # bold the header
-                out.append("<strong>")
-                out.append(" ".join(temp_out))
-                out.append("</strong>")
-                temp_out = ["<br>"]
+        # these are the header words before the colon at the end of the line
+        elif not is_hex(item):
+            temp_out.append(item)
+            counter = 0
+        # fall-through case of data
+        else:
+            if counter == 2:
+                out.append("<br>")
                 counter = 0
-
-            # these are the header words before the colon at the end of the line
-            elif not is_hex(item):
-                temp_out.append(item)
-                counter = 0
-            # fall-through case of data
-            else:
-                if counter == 2:
-                    out.append("<br>")
-                    counter = 0
-                out.append(item)
-                counter += 1
+            out.append(item)
+            counter += 1
 
     # ACI image source
     image = "<img src=\"https://azure.microsoft.com/svghandler/container-instances?width=600&height=315\" alt=\"Microsoft ACI Logo\" width=\"600\" height=\"315\"><br>"
@@ -77,7 +72,7 @@ def index():
     # put everything together
     return (
         style +
-        "<div>" + "<h1>Welcome to Confidential containers on Azure Container Instances!</h1>" +
+        "<div>" + "<h1>Welcome to Confidential Containers on Azure Container Instances!</h1>" +
         image + " ".join(out) +
         "</div>"
     )
