@@ -13,4 +13,4 @@ ENV PYTHONUNBUFFERED=1
 
 RUN rm -rf /usr/share/nginx/html/
 # entrypoint
-CMD [ "python3", "main.py"]
+CMD [ "python3.10", "main.py"]

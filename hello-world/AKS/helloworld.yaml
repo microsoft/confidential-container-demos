@@ -7,9 +7,9 @@ metadata:
   name: helloworld
 spec:
   containers:
-    - image: "fishersnpregistry.azurecr.io/hello-world-aks:1.1"
+    - image: "mcr.microsoft.com/public/acc/samples/aks/helloworld:1.2"
       command:
-        - python3
+        - python3.10
         - main.py
       imagePullPolicy: Always
       name: helloworld
