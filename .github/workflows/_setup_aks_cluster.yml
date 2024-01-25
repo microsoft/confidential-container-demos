@@ -1,0 +1,110 @@
+name: Create and Prepare AKS Cluster
+
+on:
+  workflow_call:
+    inputs:
+      cluster-name:
+        required: true
+        description: AKS Cluster Name
+        type: string
+  workflow_dispatch:
+    
+jobs:
+  setup-aks-cluster:
+    name: Setup AKS Cluster
+    runs-on: ubuntu-latest
+    env: 
+      RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }} 
+      USER_ASSIGNED_IDENTITY_NAME: ${{ vars.USER_ASSIGNED_IDENTITY_NAME }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log into Azure
+        run: |
+          az login --service-principal \
+          --username ${{ secrets.AZURE_SERVICE_PRINCIPAL_APP_ID }} \
+          --password ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }} \
+          --tenant ${{ secrets.AZURE_SERVICE_PRINCIPAL_TENANT }}
+
+      - name: Install Dependencies 
+        id: install-dependencies 
+        run: |
+          result=$(az extension list -o table  2>&1 || true)
+          if [[ $result == *"aks-preview"* ]]; then
+            echo "aks-preview already installed, upgrading aks-preview version."
+            az extension update --name aks-preview
+          else
+            echo "aks-preview extension not found. Installing aks-preview..."
+            az extension add --name aks-preview
+          fi
+
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"  --fail-with-body
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin
+          kubectl version 2>&1 || true
+
+      - name: Prepare Workload Identity Env Var
+        id: prepare-workload-identity-env-vars
+        env:
+          CLUSTER_NAME: ${{ inputs.cluster-name}}
+        run: |
+          az aks get-credentials --name $CLUSTER_NAME --resource-group $RESOURCE_GROUP  --overwrite-existing
+          export AKS_OIDC_ISSUER="$(az aks show -n $CLUSTER_NAME -g $RESOURCE_GROUP --query "oidcIssuerProfile.issuerUrl" -otsv)"
+          echo "Setting AKS_OIDC_ISSUER to $AKS_OIDC_ISSUER"
+
+          export USER_ASSIGNED_CLIENT_ID="$(az identity show --resource-group $RESOURCE_GROUP --name $USER_ASSIGNED_IDENTITY_NAME --query 'clientId' -otsv)"
+          echo "Setting USER_ASSIGNED_CLIENT_ID to $USER_ASSIGNED_CLIENT_ID"
+
+          echo "AKS_OIDC_ISSUER=$AKS_OIDC_ISSUER" >> $GITHUB_OUTPUT
+          echo "USER_ASSIGNED_CLIENT_ID=$USER_ASSIGNED_CLIENT_ID" >> $GITHUB_OUTPUT
+        
+      - name: Create Kafka Namespace 
+        id: create-kafka-namespace
+        if: steps.prepare-workload-identity-env-vars.outcome == 'success'
+        run: |
+          result=$(kubectl get namespace kafka 2>&1 || true)
+          if [[ $result == *"not found"* ]]; then
+              echo "kafka namespace not found. Create kafka namespace..."
+              kubectl create namespace kafka
+          else
+              echo "kafka namespace already exists."
+          fi
+      
+      - name: Create Service Account
+        id: create-service-account
+        if: steps.create-kafka-namespace.outcome == 'success'
+        run: |
+          kubectl delete sa -n kafka workload-identity-sa 2>&1 || true
+          cat <<EOF | kubectl apply -f - 
+          apiVersion: v1 
+          kind: ServiceAccount 
+          metadata: 
+            annotations: 
+              azure.workload.identity/client-id: ${{ steps.prepare-workload-identity-env-vars.outputs.USER_ASSIGNED_CLIENT_ID }}
+            name: workload-identity-sa 
+            namespace: kafka 
+          EOF
+      
+      - name: Setup Workload Identity
+        id: setup-workload-identity
+        if: steps.create-service-account.outcome == 'success'
+        run: |
+          result=$(az identity federated-credential show --name myFedIdentity --identity-name $USER_ASSIGNED_IDENTITY_NAME --resource-group $RESOURCE_GROUP 2>&1 || true)
+          if [[ $result == *${{ steps.prepare-workload-identity-env-vars.outputs.AKS_OIDC_ISSUER }}* ]]; then
+              echo "Federated identity already exists"
+          else
+              echo "Federated identity not found. Creating... "
+              az identity federated-credential create --name myFedIdentity --identity-name $USER_ASSIGNED_IDENTITY_NAME --resource-group $RESOURCE_GROUP --issuer ${{ steps.prepare-workload-identity-env-vars.outputs.AKS_OIDC_ISSUER }} --subject system:serviceaccount:kafka:workload-identity-sa
+          fi
+          
+      - name: Setup Kafka Cluster 
+        id: apply-kafka-cr-files
+        if: steps.setup-workload-identity.outcome == 'success'
+        run: |
+          kubectl create -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka 2>&1
+          # Apply the `Kafka` Cluster CR file
+          kubectl apply -f https://strimzi.io/examples/latest/kafka/kafka-persistent-single.yaml -n kafka 2>&1
+  
+          echo "Sleep for 3 minutes and wait for Kafka cluster to be created and fully working..."
+          sleep 180

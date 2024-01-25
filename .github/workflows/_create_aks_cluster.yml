@@ -1,0 +1,64 @@
+name: Create AKS Cluster
+
+on:
+  workflow_call:
+    outputs:
+      cluster-name:
+        description: AKS Cluster Name
+        value: ${{ jobs.create-aks-cluster.outputs.cluster-name }}
+  workflow_dispatch:
+    
+jobs:
+  create-aks-cluster:
+    name: Create AKS Cluster
+    runs-on: ubuntu-latest
+    env: 
+      RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }} 
+      KUBERNETES_VERSION: ${{ vars.KUBERNETES_VERSION }}
+    outputs:
+      cluster-name: ${{ steps.create-aks-cluster.outputs.cluster-name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get Workflow ID
+        id: generate-id
+        run: echo "id=$(openssl rand -hex 8 | tr -d '\n')" >> $GITHUB_OUTPUT
+      
+      - name: Log into Azure
+        run: |
+          az login --service-principal \
+          --username ${{ secrets.AZURE_SERVICE_PRINCIPAL_APP_ID }} \
+          --password ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }} \
+          --tenant ${{ secrets.AZURE_SERVICE_PRINCIPAL_TENANT }}
+
+      - name: Install Dependencies 
+        id: install-dependencies 
+        run: |
+          result=$(az extension list -o table  2>&1 || true)
+          if [[ $result == *"aks-preview"* ]]; then
+            echo "aks-preview already installed, upgrading aks-preview version."
+            az extension update --name aks-preview
+          else
+            echo "aks-preview extension not found. Installing aks-preview..."
+            az extension add --name aks-preview
+          fi
+
+      - name: Create AKS Cluster
+        id: create-aks-cluster
+        if: steps.install-dependencies.outcome == 'success'
+        env: 
+          RUN_ID: ${{ steps.generate-id.outputs.id}}
+        run: |
+          az aks create --resource-group $RESOURCE_GROUP \
+          --name skr-kafka-demo-${RUN_ID} \
+          --kubernetes-version $KUBERNETES_VERSION \
+          --os-sku AzureLinux \
+          --node-vm-size Standard_DC4as_cc_v5 \
+          --tags "Owner=accct" \
+          --enable-oidc-issuer \
+          --enable-workload-identity \
+          --workload-runtime KataCcIsolation \
+          --node-count 1 \
+          --generate-ssh-keys
+          echo "cluster-name=skr-kafka-demo-${RUN_ID}" >> $GITHUB_OUTPUT

@@ -1,0 +1,104 @@
+name: Kafka Demo Test 
+
+on:
+  pull_request:
+    branches: 
+      - main
+  workflow_dispatch:
+    inputs:
+      sidecar-registry:
+        description: "The registry to get the image from"
+        required: true
+        type: choice
+        default: mcr.microsoft.com
+        options: 
+          - mcr.microsoft.com
+          - confidentialsidecars.azurecr.io
+      key-release-image:
+        description: "The image of the SKR sidecar to use"
+        required: true
+        default: "aci/skr:2.7"
+        type: string
+      consumer-image: 
+        description: "Consumer Image"
+        default: "mcr.microsoft.com/acc/samples/kafka/consumer:1.0"
+        required: true
+        type: string
+      producer-image: 
+        description: "Producer Image"
+        default: "mcr.microsoft.com/acc/samples/kafka/producer:1.0"
+        required: true
+        type: string
+  merge_group:
+    branches:
+      - main
+
+jobs:
+  prepare:
+    name: Extract Environment Variables
+    runs-on: ubuntu-latest
+    outputs:
+      key-release-image: ${{ steps.extract-envs.outputs.key-release-image }}
+      consumer-image: ${{ steps.extract-envs.outputs.consumer-image }}
+      producer-image: ${{ steps.extract-envs.outputs.producer-image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract Envs 
+        id: extract-envs
+        run: | 
+          echo "Extracting Environment Variables"
+          echo "Triggering event is ${{ github.event_name }}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "key-release-image=mcr.microsoft.com/aci/skr:2.7" >> $GITHUB_OUTPUT
+            echo "consumer-image=mcr.microsoft.com/acc/samples/kafka/consumer:1.0" >> $GITHUB_OUTPUT
+            echo "producer-image=mcr.microsoft.com/acc/samples/kafka/producer:1.0" >> $GITHUB_OUTPUT
+          else
+            echo "key-release-image=${{ format('{0}/{1}', inputs.sidecar-registry, inputs.key-release-image) }}" >> $GITHUB_OUTPUT
+            echo "consumer-image=${{ inputs.consumer-image }}" >> $GITHUB_OUTPUT
+            echo "producer-image=${{ inputs.producer-image }}" >> $GITHUB_OUTPUT
+          fi
+
+  create-aks-cluster:
+    name: Create AKS Cluster
+    needs: [prepare]
+    uses: ./.github/workflows/_create_aks_cluster.yml
+    secrets: inherit
+  
+  setup-aks-cluster:
+    name: Setup AKS Cluster
+    needs: [prepare, create-aks-cluster]
+    uses: ./.github/workflows/_setup_aks_cluster.yml
+    secrets: inherit
+    with: 
+      cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
+ 
+  deploy-kafka-test: 
+    name: Deploy Kafka Demo Test 
+    uses: ./.github/workflows/_deploy_kafka_test.yml
+    needs: [prepare, create-aks-cluster, setup-aks-cluster]
+    secrets: inherit 
+    with: 
+      cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
+      key-release-image: ${{ needs.prepare.outputs.key-release-image }}
+      consumer-image: ${{ needs.prepare.outputs.consumer-image }}
+      producer-image: ${{ needs.prepare.outputs.producer-image }}
+
+  test-workload: 
+    name: Test Workload 
+    uses: ./.github/workflows/_test_workload.yml
+    needs: [prepare, create-aks-cluster, setup-aks-cluster, deploy-kafka-test]
+    secrets: inherit 
+    with: 
+      cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
+
+  cleanup: 
+    name: Clean Up
+    if: always()
+    uses: ./.github/workflows/_cleanup.yml
+    needs: [prepare, create-aks-cluster, setup-aks-cluster, deploy-kafka-test, test-workload]
+    secrets: inherit
+
+  
+
