@@ -4,6 +4,12 @@ on:
   pull_request:
     branches: 
       - main
+    paths:
+      - .github/workflows/**
+      - kafka/**
+      - '!**/README.md'
+      - '!.github/workflows/release.yml'
+      - '!.github/workflows/ci.yml'
   workflow_dispatch:
     inputs:
       sidecar-registry:
@@ -32,9 +38,11 @@ on:
   merge_group:
     branches:
       - main
+
 permissions:
   id-token: write # This is required for requesting the JWT
   contents: read  # This is required for actions/checkout
+  
 jobs:
   prepare:
     name: Extract Environment Variables
@@ -52,26 +60,46 @@ jobs:
         run: | 
           echo "Extracting Environment Variables"
           echo "Triggering event is ${{ github.event_name }}"
+          # uses default SKR but builds new Kafka images from source for PR
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "key-release-image=mcr.microsoft.com/aci/skr:2.7" >> $GITHUB_OUTPUT
-            echo "consumer-image=mcr.microsoft.com/acc/samples/kafka/consumer:2.0" >> $GITHUB_OUTPUT
-            echo "producer-image=mcr.microsoft.com/acc/samples/kafka/producer:2.0" >> $GITHUB_OUTPUT
+            echo "consumer-image=private/${{ github.actor }}/acc/samples/kafka/consumer:${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "producer-image=private/${{ github.actor }}/acc/samples/kafka/producer:${{ github.sha }}" >> $GITHUB_OUTPUT
+          # uses the provided SKR and Kafka images or defaults for workflow_dispatch
           else
             echo "key-release-image=${{ format('{0}/{1}', inputs.sidecar-registry, inputs.key-release-image) }}" >> $GITHUB_OUTPUT
             echo "consumer-image=${{ inputs.consumer-image }}" >> $GITHUB_OUTPUT
             echo "producer-image=${{ inputs.producer-image }}" >> $GITHUB_OUTPUT
           fi
 
+  push_images:
+    name: Push Images to Private Registry for Testing
+    needs: [prepare]
+    uses: ./.github/workflows/_push_image.yml
+    if: github.event_name == 'pull_request'
+    secrets: inherit
+    strategy:
+      matrix:
+        image: ["kafka/consumer", "kafka/producer"]
+    with:
+      image_tag: "private/${{ github.actor }}/acc/samples/${{ matrix.image }}:${{ github.sha }}"
+      docker_context: ${{ matrix.image }}
+      repo_type: private
+
   create-aks-cluster:
     name: Create AKS Cluster
-    needs: [prepare]
+    needs: [prepare, push_images]
     uses: ./.github/workflows/_create_aks_cluster.yml
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
     secrets: inherit
+    with: 
+      workflow-id:  ${{ github.sha }}
   
   setup-aks-cluster:
     name: Setup AKS Cluster
-    needs: [prepare, create-aks-cluster]
+    needs: [prepare, push_images, create-aks-cluster]
     uses: ./.github/workflows/_setup_aks_cluster.yml
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
     secrets: inherit
     with: 
       cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
@@ -79,27 +107,31 @@ jobs:
   deploy-kafka-test: 
     name: Deploy Kafka Demo Test 
     uses: ./.github/workflows/_deploy_kafka_test.yml
-    needs: [prepare, create-aks-cluster, setup-aks-cluster]
+    needs: [prepare, push_images, create-aks-cluster, setup-aks-cluster]
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
     secrets: inherit 
     with: 
       cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
       key-release-image: ${{ needs.prepare.outputs.key-release-image }}
       consumer-image: ${{ needs.prepare.outputs.consumer-image }}
       producer-image: ${{ needs.prepare.outputs.producer-image }}
+      repo-type: ${{ (github.event_name == 'pull_request' && 'private') || 'public' }}
+      workflow-id: ${{ github.sha }}
 
   test-workload: 
     name: Test Workload 
     uses: ./.github/workflows/_test_workload.yml
-    needs: [prepare, create-aks-cluster, setup-aks-cluster, deploy-kafka-test]
+    needs: [push_images, create-aks-cluster, deploy-kafka-test]
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
     secrets: inherit 
     with: 
       cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
 
   cleanup: 
     name: Clean Up
-    if: always()
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
     uses: ./.github/workflows/_cleanup.yml
-    needs: [prepare, create-aks-cluster, setup-aks-cluster, deploy-kafka-test, test-workload]
+    needs: [push_images, test-workload]
     secrets: inherit
 
   

@@ -2,11 +2,21 @@ name: Create AKS Cluster
 
 on:
   workflow_call:
+    inputs:
+      workflow-id:
+        description: "Workflow ID"
+        required: true
+        type: string
     outputs:
       cluster-name:
-        description: AKS Cluster Name
+        description: "AKS Cluster Name"
         value: ${{ jobs.create-aks-cluster.outputs.cluster-name }}
   workflow_dispatch:
+    inputs:
+      workflow-id:
+        description: "Workflow ID"
+        required: true
+        type: string
   
 jobs:
   create-aks-cluster:
@@ -18,11 +28,7 @@ jobs:
       cluster-name: ${{ steps.create-aks-cluster.outputs.cluster-name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Get Workflow ID
-        id: generate-id
-        run: echo "id=$(openssl rand -hex 8 | tr -d '\n')" >> $GITHUB_OUTPUT     
+        uses: actions/checkout@v4  
 
       - name: Install Dependencies 
         id: install-dependencies 
@@ -37,7 +43,7 @@ jobs:
           fi
       
       - name: Log into Azure
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -47,10 +53,10 @@ jobs:
         id: create-aks-cluster
         if: steps.install-dependencies.outcome == 'success'
         env: 
-          RUN_ID: ${{ steps.generate-id.outputs.id}}
+          RUN_ID: ${{ inputs.workflow-id }}
         run: |
           az aks create --resource-group $RESOURCE_GROUP \
-          --name skr-kafka-demo-${RUN_ID} \
+          --name kafka-${RUN_ID} \
           --os-sku AzureLinux \
           --node-vm-size Standard_DC4as_cc_v5 \
           --tags "Owner=accct" \
@@ -59,4 +65,4 @@ jobs:
           --workload-runtime KataCcIsolation \
           --node-count 1 \
           --generate-ssh-keys
-          echo "cluster-name=skr-kafka-demo-${RUN_ID}" >> $GITHUB_OUTPUT
+          echo "cluster-name=kafka-${RUN_ID}" >> $GITHUB_OUTPUT

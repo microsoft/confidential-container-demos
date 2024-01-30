@@ -1,16 +1,25 @@
-FROM ubuntu:22.04
-RUN apt-get update && apt-get -y upgrade && apt-get -y install nginx python3.10
+FROM mcr.microsoft.com/devcontainers/base:dev-ubuntu-22.04 AS build
+ENV PROJECT_DIR=~/
+WORKDIR ${PROJECT_DIR}/confidential-container-demos
+COPY . ./
+RUN chmod +x hello-world/get_verbose_report.sh && ./hello-world/get_verbose_report.sh
+
+FROM mcr.microsoft.com/cbl-mariner/base/python:3.9
+RUN tdnf update -y && tdnf -y upgrade && tdnf -y install nginx && tdnf clean all
 
 WORKDIR /app
 
 # copy all files from this folder to working directory (ignores files in .dockerignore)
-COPY . /app/
-RUN mv default /etc/nginx/sites-available/default
+ARG BUILD_DIR=~/confidential-container-demos/hello-world/AKS
+COPY --from=build ${BUILD_DIR}/. /app/
+COPY --from=build ${BUILD_DIR}/default /etc/nginx/sites-available/default
+
+RUN chmod +x verbose-report
 
 EXPOSE 80
 EXPOSE 443
 ENV PYTHONUNBUFFERED=1
 
-RUN rm -rf /usr/share/nginx/html/
+RUN rm -rf /etc/nginx/html/
 # entrypoint
-CMD [ "python3.10", "main.py"]
+CMD [ "python3", "main.py"]

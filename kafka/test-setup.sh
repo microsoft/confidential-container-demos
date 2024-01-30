@@ -31,7 +31,6 @@ MAA_ENDPOINT=${MAA_ENDPOINT#$http}
 MAA_ENDPOINT=${MAA_ENDPOINT%%/*}
 
 key_vault_name=$(echo "$AZURE_AKV_RESOURCE_ENDPOINT" | cut -d. -f1)
-echo "Key vault name is ${key_vault_name}"
 
 if [[ -z "${MAA_ENDPOINT}" ]]; then
 	echo "Error: Env MAA_ENDPOINT is not set. Please set up your own MAA instance or select from a region where MAA is offered (e.g. sharedeus.eus.attest.azure.net):"
