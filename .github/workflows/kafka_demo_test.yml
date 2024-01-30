@@ -39,11 +39,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       key-release-image: ${{ steps.extract-envs.outputs.key-release-image }}
-      consumer-image: ${{ steps.extract-envs.outputs.consumer-image }}
-      producer-image: ${{ steps.extract-envs.outputs.producer-image }}
+      workflow-id: ${{ steps.generate-id.outputs.id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Get Workflow ID
+        id: generate-id
+        run: echo "id=$(openssl rand -hex 8 | tr -d '\n')" >> $GITHUB_OUTPUT
 
       - name: Extract Envs 
         id: extract-envs
@@ -52,24 +55,39 @@ jobs:
           echo "Triggering event is ${{ github.event_name }}"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "key-release-image=mcr.microsoft.com/aci/skr:2.7" >> $GITHUB_OUTPUT
-            echo "consumer-image=mcr.microsoft.com/acc/samples/kafka/consumer:1.0" >> $GITHUB_OUTPUT
-            echo "producer-image=mcr.microsoft.com/acc/samples/kafka/producer:1.0" >> $GITHUB_OUTPUT
           else
             echo "key-release-image=${{ format('{0}/{1}', inputs.sidecar-registry, inputs.key-release-image) }}" >> $GITHUB_OUTPUT
-            echo "consumer-image=${{ inputs.consumer-image }}" >> $GITHUB_OUTPUT
-            echo "producer-image=${{ inputs.producer-image }}" >> $GITHUB_OUTPUT
           fi
+
+  push_images:
+    name: Push Images to Private Registry for Testing
+    needs: [prepare]
+    uses: ./.github/workflows/_push_image.yml
+    if: github.event_name == 'pull_request'
+    secrets: inherit
+    strategy:
+      matrix:
+        image: ["kafka/consumer", "kafka/producer"]
+    with:
+      image_tag: ${{ needs.prepare.outputs.workflow-id }}
+      image: ${{ matrix.image }}
+      repo_type: private
+      docker_context: ${{ matrix.image }}
 
   create-aks-cluster:
     name: Create AKS Cluster
-    needs: [prepare]
+    needs: [prepare, push_images]
     uses: ./.github/workflows/_create_aks_cluster.yml
+    if: always() && (needs.push_images.result != 'failure')
     secrets: inherit
+    with: 
+      workflow-id:  ${{ needs.prepare.outputs.workflow-id }}
   
   setup-aks-cluster:
     name: Setup AKS Cluster
-    needs: [prepare, create-aks-cluster]
+    needs: [prepare, push_images, create-aks-cluster]
     uses: ./.github/workflows/_setup_aks_cluster.yml
+    if: always() && (needs.push_images.result != 'failure')
     secrets: inherit
     with: 
       cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
@@ -77,27 +95,30 @@ jobs:
   deploy-kafka-test: 
     name: Deploy Kafka Demo Test 
     uses: ./.github/workflows/_deploy_kafka_test.yml
-    needs: [prepare, create-aks-cluster, setup-aks-cluster]
+    needs: [prepare, push_images, create-aks-cluster, setup-aks-cluster]
+    if: always() && (needs.push_images.result != 'failure')
     secrets: inherit 
     with: 
       cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
       key-release-image: ${{ needs.prepare.outputs.key-release-image }}
-      consumer-image: ${{ needs.prepare.outputs.consumer-image }}
-      producer-image: ${{ needs.prepare.outputs.producer-image }}
+      consumer-image: ${{ inputs.consumer-image }}
+      producer-image: ${{ inputs.producer-image }}
+      workflow-id: ${{ needs.prepare.outputs.workflow-id }}
 
   test-workload: 
     name: Test Workload 
     uses: ./.github/workflows/_test_workload.yml
-    needs: [prepare, create-aks-cluster, setup-aks-cluster, deploy-kafka-test]
+    needs: [prepare, push_images, create-aks-cluster, setup-aks-cluster, deploy-kafka-test]
+    if: always() && (needs.push_images.result != 'failure')
     secrets: inherit 
     with: 
       cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
 
   cleanup: 
     name: Clean Up
-    if: always()
+    if: always() && (needs.push_images.result != 'failure')
     uses: ./.github/workflows/_cleanup.yml
-    needs: [prepare, create-aks-cluster, setup-aks-cluster, deploy-kafka-test, test-workload]
+    needs: [prepare, push_images, create-aks-cluster, setup-aks-cluster, deploy-kafka-test, test-workload]
     secrets: inherit
 
   

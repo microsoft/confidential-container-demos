@@ -6,7 +6,11 @@ on:
       cluster-name:
         description: AKS Cluster Name
         value: ${{ jobs.create-aks-cluster.outputs.cluster-name }}
-  workflow_dispatch:
+    inputs:
+      workflow-id:
+        description: Workflow ID
+        required: true
+        type: string
     
 jobs:
   create-aks-cluster:
@@ -19,10 +23,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Get Workflow ID
-        id: generate-id
-        run: echo "id=$(openssl rand -hex 8 | tr -d '\n')" >> $GITHUB_OUTPUT
       
       - name: Log into Azure
         run: |
@@ -47,7 +47,7 @@ jobs:
         id: create-aks-cluster
         if: steps.install-dependencies.outcome == 'success'
         env: 
-          RUN_ID: ${{ steps.generate-id.outputs.id}}
+          RUN_ID: ${{ inputs.workflow-id }}
         run: |
           az aks create --resource-group $RESOURCE_GROUP \
           --name skr-kafka-demo-${RUN_ID} \
