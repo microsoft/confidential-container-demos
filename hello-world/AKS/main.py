@@ -69,7 +69,7 @@ def index():
 if __name__ == '__main__':
     html = index()
 
-    filename = "/usr/share/nginx/html/index.html"
+    filename = "/etc/nginx/html/index.html"
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, "w") as f:
         f.write(html)

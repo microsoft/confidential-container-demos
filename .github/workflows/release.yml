@@ -1,0 +1,79 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:        
+      - 'aci/helloworld:v*'
+      - 'aks/helloworld:v*'
+      - 'kafka/consumer:v*'
+      - 'kafka/producer:v*'
+    paths:
+      - .github/workflows/release.yml
+      - hello-world/**
+      - kafka/**
+
+jobs:
+  parse_tag:
+    name: Parse Tag
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.parse_tag.outputs.image }}
+      image_tag: ${{ steps.parse_tag.outputs.image_tag }}
+      repo_type: ${{ steps.parse_tag.outputs.repo_type }}
+    steps:
+      - name: Parse Tag
+        id: parse_tag
+        run: |
+          image=$(echo ${{ github.ref_name }} | cut -d ":" -f 1)
+          image_tag=$(echo ${{ github.ref_name }} | cut -d ":" -f 2)
+
+          repo_type="public"
+          if [[ "${{ contains(github.ref, 'rc') }}" ]]; then
+            repo_type="private"
+          fi
+          
+          echo "image=$image" >> $GITHUB_OUTPUT
+          echo "image_tag=$image_tag" >> $GITHUB_OUTPUT
+          echo "repo_type=$repo_type" >> $GITHUB_OUTPUT
+
+  get_docker_context:
+    name: Get Docker Context
+    needs: parse_tag
+    runs-on: ubuntu-latest
+    outputs:
+      docker_context: ${{ steps.get_docker_context.outputs.docker_context }}
+    steps:
+      - name: Get Docker Context
+        id: get_docker_context
+        run: |
+          if [[ "${{ needs.parse_tag.outputs.image }}" == "aci/helloworld" ]]; then
+            context="hello-world/ACI/app"
+          elif [[ "${{ needs.parse_tag.outputs.image }}" == "aks/helloworld" ]]; then
+            context="hello-world/AKS"
+          else
+            context="${{ needs.parse_tag.outputs.image }}"
+          fi
+          echo "docker_context=$context" >> $GITHUB_OUTPUT
+
+  build_and_push:
+    name: Build and Push Docker Images
+    needs: [parse_tag, get_docker_context]
+    uses: ./.github/workflows/_push_image.yml
+    secrets: inherit
+    with:
+      image_tag: ${{ needs.parse_tag.outputs.image_tag }}
+      image: ${{ needs.parse_tag.outputs.image }}
+      repo_type: ${{ needs.parse_tag.outputs.repo_type }}
+      docker_context: ${{ fromJson(needs.get_docker_context.outputs.docker_context) }}
+
+  create_release:
+    needs: [parse_tag, get_docker_context, build_and_push]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref, 'rc') }}

@@ -1,0 +1,47 @@
+name: Push Image
+
+on:
+  workflow_call:
+    inputs:
+      repo_type:
+        description: "Public or Private Repository"
+        required: true
+        type: string
+      image_tag:
+        description: "Tag to push the image with"
+        required: true
+        type: string
+      image:
+        description: "Image to Push (e.g. primary:path/to/Dockerfile)"
+        required: true
+        type: string
+      docker_context:
+        description: "Docker Context to Use"
+        required: true
+        type: string
+
+jobs:
+  push-example-image:
+    name: Push Image (${{ inputs.image }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log into Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ secrets.AZURE_REGISTRY_NAME }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ inputs.docker_context }}
+          file: ${{ inputs.docker_context }}/Dockerfile
+          push: true
+          tags: ${{ secrets.AZURE_REGISTRY_URL }}/${{ inputs.repo_type }}/acc/samples/${{ inputs.image }}:${{ inputs.image_tag }}
