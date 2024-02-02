@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     env: 
       RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }} 
-      KUBERNETES_VERSION: ${{ vars.KUBERNETES_VERSION }}
     outputs:
       cluster-name: ${{ steps.create-aks-cluster.outputs.cluster-name }}
     steps:
@@ -52,7 +51,6 @@ jobs:
         run: |
           az aks create --resource-group $RESOURCE_GROUP \
           --name skr-kafka-demo-${RUN_ID} \
-          --kubernetes-version $KUBERNETES_VERSION \
           --os-sku AzureLinux \
           --node-vm-size Standard_DC4as_cc_v5 \
           --tags "Owner=accct" \
