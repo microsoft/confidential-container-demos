@@ -17,8 +17,8 @@ jobs:
             --password ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }} \
             --tenant ${{ secrets.AZURE_SERVICE_PRINCIPAL_TENANT }}
 
-      # - name: Set Subscription
-      #   run: az account set --subscription ${{ secrets.AZURE_LAB_SUBSCRIPTION }}
+      - name: Set Subscription
+        run: az account set --subscription ${{ secrets.AZURE_LAB_SUBSCRIPTION }}
             
       - name: Login to Azure Container Registry
         uses: azure/docker-login@v1.0.1
