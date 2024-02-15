@@ -42,8 +42,19 @@ jobs:
           az aks get-credentials --name $CLUSTER_NAME  --resource-group $RESOURCE_GROUP  --overwrite-existing
 
           echo "Wait for pod readiness before checking expected Kafka message."
-          kubectl wait --for=condition=Ready=true -n kafka pod/kafka-golang-consumer --timeout=180s
-          kubectl wait --for=condition=Ready=true -n kafka pod/kafka-producer --timeout=180s
+          kubectl wait --for=condition=Ready=true -n kafka pod/kafka-golang-consumer --timeout=180s || {
+            echo "Consumer is not ready within the acceptable time range. Printing out kubectl describe output."
+            result=$(kubectl describe pod -n kafka kafka-golang-consumer)
+            echo $result
+            exit 1 
+          }
+
+          kubectl wait --for=condition=Ready=true -n kafka pod/kafka-producer --timeout=180s || {
+            echo "Producer is not ready within the acceptable time range. Printing out kubectl describe output."
+            result=$(kubectl describe pod -n kafka kafka-producer)
+            echo $result
+            exit 1 
+          }
 
           max_retries=5
           retries=0
