@@ -7,10 +7,6 @@ on:
         description: AKS Cluster Name
         value: ${{ jobs.create-aks-cluster.outputs.cluster-name }}
   workflow_dispatch:
-
-permissions:
-  id-token: write # This is required for requesting the JWT
-  contents: read  # This is required for actions/checkout
   
 jobs:
   create-aks-cluster:
