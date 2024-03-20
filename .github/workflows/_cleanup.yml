@@ -16,14 +16,11 @@ jobs:
             --username ${{ secrets.AZURE_SERVICE_PRINCIPAL_APP_ID }} \
             --password ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }} \
             --tenant ${{ secrets.AZURE_SERVICE_PRINCIPAL_TENANT }}
-
-      - name: Set Subscription
-        run: az account set --subscription ${{ secrets.AZURE_LAB_SUBSCRIPTION }}
             
       - name: Login to Azure Container Registry
-        uses: azure/docker-login@v1.0.1
+        uses: docker/login-action@v3
         with:
-          login-server: ${{ secrets.AZURE_REGISTRY_URL }}
+          registry: ${{ secrets.AZURE_REGISTRY_URL }}
           username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
           password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
 
