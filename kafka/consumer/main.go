@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"math/big"
@@ -23,38 +22,23 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"text/template"
 	"time"
 
-	"github.com/Shopify/sarama"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 )
-
-var topic = getenv("TOPIC", "my-topic")
-var brokers = getenv("BROKERS", "my-cluster-kafka-bootstrap:9092")
-var consumergroup = getenv("CONSUMERGROUP", "strimzikafkaconsumergroupid")
-var logLocation = getenv("LOG_FILE", "")
 
 var keyEnabled bool
 
-func getenv(key, fallback string) string {
-	value := os.Getenv(key)
-	if len(value) == 0 {
-		return fallback
-	}
-	return value
-}
+const eventHubNamespace = "EVENTHUB_NAMESPACE"
+const eventHub = "EVENTHUB"
 
 func main() {
-	if len(logLocation) > 0 {
-		f, err := os.OpenFile(logLocation, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0740)
-		if err != nil {
-			log.Printf("Unable to open file log location: %s", err.Error())
-		}
-		log.SetOutput(f)
-	}
-
+	relayMessage := make(chan string)
 	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	cg, _ := inClusterKafkaConfig()
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 
 	t, err := template.ParseFiles("/webtemplates/index.html")
 	if err != nil {
@@ -62,27 +46,40 @@ func main() {
 		os.Exit(1)
 	}
 
-	consumerGroup, err := sarama.NewConsumerGroup([]string{brokers}, consumergroup, cg)
+	credential, err := azidentity.NewDefaultAzureCredential(nil)
+	eventHubNamespace := fmt.Sprintf(
+		"%s.servicebus.windows.net",
+		getEnv(eventHubNamespace))
+
 	if err != nil {
-		log.Printf("Error creating the Sarama consumer: %v", err)
-		os.Exit(1)
+		fmt.Println(err.Error())
 	}
 
-	cgh := &consumerGroupHandler{
-		ready:    make(chan struct{}),
-		end:      make(chan struct{}),
-		done:     make(chan struct{}),
-		messages: make(chan string),
+	// Event Hubs processor
+	consumerClient, err := azeventhubs.NewConsumerClient(
+		eventHubNamespace,
+		getEnv(eventHub),
+		azeventhubs.DefaultConsumerGroup,
+		credential,
+		nil)
+
+	if err != nil {
+		fmt.Println(err.Error())
 	}
 
-	ctx := context.Background()
-	go func() {
-		for {
-			// this method calls the methods handler on each stage: setup, consume and cleanup
-			consumerGroup.Consume(ctx, []string{topic}, cgh)
-		}
+	defer consumerClient.Close(context.TODO())
 
-	}()
+	partitionClient, err := consumerClient.NewPartitionClient("0", &azeventhubs.PartitionClientOptions{
+		StartPosition: azeventhubs.StartPosition{
+			Earliest: to.Ptr(false),
+		},
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer partitionClient.Close(context.TODO())
 
 	getRoot := func(w http.ResponseWriter, r *http.Request) {
 		data := struct {
@@ -93,7 +90,7 @@ func main() {
 		}
 		timer := time.NewTimer(10 * time.Second)
 		select {
-		case data.Message = <-cgh.messages:
+		case data.Message = <-relayMessage:
 			log.Printf("got / request")
 		case <-timer.C:
 			data.Message = "Timeout waiting to read data from Kafka.  Please refresh the page to try again."
@@ -103,9 +100,6 @@ func main() {
 			log.Printf("Unable to serve webpage: %s", err.Error())
 		}
 	}
-
-	<-cgh.ready // Await till the consumer has been set up
-	log.Println("Sarama consumer up and running!...")
 
 	http.HandleFunc("/", getRoot)
 	http.Handle("/web/", http.StripPrefix("/web", http.FileServer(http.Dir("/web"))))
@@ -123,44 +117,69 @@ func main() {
 		}
 	}()
 
-	// waiting for the end of all messages received or an OS signal
-	select {
-	case <-cgh.end:
-		log.Printf("Finished to receive %d messages", 100)
-	case sig := <-signals:
-		log.Printf("Got signal: %v", sig)
-		close(cgh.done)
-	}
-
-	err = consumerGroup.Close()
+	key, err := retrieveKey()
 	if err != nil {
-		log.Printf("Error closing the Sarama consumer: %v", err)
-		os.Exit(1)
+		log.Printf("Unable to retrieve key: %s", err.Error())
 	}
-	log.Printf("Consumer closed")
-}
 
-// struct defining the handler for the consuming Sarama method
-type consumerGroupHandler struct {
-	ready    chan struct{}
-	end      chan struct{}
-	done     chan struct{}
-	messages chan string
-}
+	for {
+		// Will wait up to 1 minute for 100 events. If the context is cancelled (or expires)
+		// you'll get any events that have been collected up to that point.
+		receiveCtx, cancel := context.WithTimeout(context.TODO(), time.Second*10)
+		log.Println("Start to receive events ")
+		events, err := partitionClient.ReceiveEvents(receiveCtx, 100, nil)
+		cancel()
 
-func (cgh *consumerGroupHandler) Setup(sarama.ConsumerGroupSession) error {
-	close(cgh.ready)
-	log.Printf("Consumer group handler setup")
-	return nil
-}
+		if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+			panic(err)
+		}
 
-func (cgh *consumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error {
-	log.Printf("Consumer group handler cleanup")
-	return nil
+		for _, event := range events {
+
+			// We're assuming the Body is a byte-encoded string. EventData.Body supports any payload
+			// that can be encoded to []byte.
+			message := string(event.Body)
+			if key != nil {
+				annotationBytes, err := base64.StdEncoding.DecodeString(message)
+				if err != nil {
+					log.Printf("error decoding message value %q", err.Error())
+				}
+				plaintext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, annotationBytes, nil)
+				if err != nil {
+					log.Printf("error decrypting message %q", err.Error())
+				}
+				message = string(plaintext)
+			}
+			select {
+			case relayMessage <- message:
+			default:
+			}
+			log.Printf("Message received: %s\n", message)
+		}
+
+		select {
+		case sig := <-signals:
+			log.Printf("Got signal: %v", sig)
+			return
+		default:
+			log.Println("Have not reiceved signal yet. Continue processing..")
+		}
+
+	}
+
 }
 
 var datakey struct {
 	Key string `json:"key"`
+}
+
+func getEnv(envName string) string {
+	value := os.Getenv(envName)
+	if value == "" {
+		fmt.Println("Environment variable '" + envName + "' is missing")
+		os.Exit(1)
+	}
+	return value
 }
 
 func retrieveKey() (*rsa.PrivateKey, error) {
@@ -202,60 +221,6 @@ func retrieveKey() (*rsa.PrivateKey, error) {
 
 	return key, nil
 
-}
-
-func (cgh *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	key, err := retrieveKey()
-	if err != nil {
-		log.Printf("not able to retrieve key: %s", err.Error())
-	}
-
-	messageChan := claim.Messages()
-	for {
-		select {
-		case message, ok := <-messageChan:
-			if !ok {
-				log.Printf("message channel was closed")
-				return nil
-			}
-			messageContents := ""
-			if key != nil {
-				annotationBytes, err := base64.StdEncoding.DecodeString(string(message.Value))
-				if err != nil {
-					log.Printf("error decoding message value %q", err.Error())
-				}
-
-				plaintext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, annotationBytes, nil)
-				if err != nil {
-					log.Printf("error decrypting message %q", err.Error())
-				}
-
-				messageContents = string(plaintext)
-			} else {
-				messageContents = string(message.Value)
-			}
-
-			select {
-			case cgh.messages <- messageContents:
-			default:
-			}
-			log.Printf("Message received: value=%s, partition=%d, offset=%d", messageContents, message.Partition, message.Offset)
-
-			session.MarkMessage(message, "")
-		// Should return when `session.Context()` is done.
-		// If not, will raise `ErrRebalanceInProgress` or `read tcp <ip>:<port>: i/o timeout` when kafka rebalance. see:
-		// https://github.com/IBM/sarama/issues/1192
-		case <-cgh.done:
-			return nil
-		}
-	}
-}
-
-func inClusterKafkaConfig() (kafkaConfig *sarama.Config, err error) {
-	kafkaConfig = sarama.NewConfig()
-	kafkaConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
-	kafkaConfig.Version = sarama.V0_10_2_1
-	return kafkaConfig, nil
 }
 
 func RSAPrivateKeyFromJWK(key1 []byte) (*rsa.PrivateKey, error) {
