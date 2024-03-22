@@ -12,7 +12,7 @@ metadata:
 spec:
   serviceAccountName: workload-identity-sa
   containers:
-    - image: fishersnpregistry.azurecr.io/producerforeventhub:8
+    - image: $PRODUCER_IMAGE
       name: kafka-producer
       command:
         - /produce

@@ -10,7 +10,7 @@ spec:
   serviceAccountName: workload-identity-sa
   runtimeClassName: kata-cc-isolation
   containers:
-    - image: "fishersnpregistry.azurecr.io/skrdb:1"
+    - image: $SIDECAR_IMAGE
       imagePullPolicy: Always
       name: skr
       env:
@@ -21,7 +21,7 @@ spec:
       volumeMounts:
         - mountPath: /opt/confidential-containers/share/kata-containers/reference-info-base64
           name: endor-loc
-    - image: "fishersnpregistry.azurecr.io/consumerforeventhub:6"
+    - image: $CONSUMER_IMAGE
       imagePullPolicy: Always
       name: kafka-golang-consumer
       env:

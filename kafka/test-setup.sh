@@ -45,7 +45,9 @@ policy_file_name="${KEY_NAME}-release-policy.json"
 echo { \"anyOf\":[ { \"authority\":\"https://${MAA_ENDPOINT}\", \"allOf\":[ > ${policy_file_name}
 echo '{"claim":"x-ms-attestation-type", "equals":"sevsnpvm"},' >> ${policy_file_name}
 
-sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$MAA_ENDPOINT/'"$MAA_ENDPOINT"'/g; s/$AZURE_AKV_RESOURCE_ENDPOINT/'"$AZURE_AKV_RESOURCE_ENDPOINT"'/g ' consumer/consumer.yaml
+CONSUMER_IMAGE=$(echo $CONSUMER_IMAGE | sed 's/\//\\\//g')
+SIDECAR_IMAGE=$(echo $SIDECAR_IMAGE | sed 's/\//\\\//g')
+sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$MAA_ENDPOINT/'"$MAA_ENDPOINT"'/g; s/$AZURE_AKV_RESOURCE_ENDPOINT/'"$AZURE_AKV_RESOURCE_ENDPOINT"'/g; s/$CONSUMER_IMAGE/'"$CONSUMER_IMAGE"'/g; s/$SIDECAR_IMAGE/'"$SIDECAR_IMAGE"'/g' consumer/consumer.yaml
 echo "Generating Security Policy for consumer"
 cat consumer/consumer.yaml
 
@@ -94,8 +96,8 @@ echo "......Key setup successful!"
 
 
 sleep 2
-
-sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g ' producer/producer.yaml
+PRODUCER_IMAGE=$(echo $PRODUCER_IMAGE | sed 's/\//\\\//g')
+sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$PRODUCER_IMAGE/'"$PRODUCER_IMAGE"'/g ' producer/producer.yaml
 awk '{printf "%s", $0; if (NR > 1) printf "auniqueidentifier"} END {print ""}' kafka-demo-pipeline-pub.pem > kafka-demo-pipeline-pub-temp.pem
 export PUBKEY=$(kafka-demo-pipeline-pub-temp.pem)
 PUBKEY=$(echo $PUBKEY | sed 's/\//\\\//g')

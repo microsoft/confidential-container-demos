@@ -58,24 +58,12 @@ jobs:
 
           echo "AKS_OIDC_ISSUER=$AKS_OIDC_ISSUER" >> $GITHUB_OUTPUT
           echo "USER_ASSIGNED_CLIENT_ID=$USER_ASSIGNED_CLIENT_ID" >> $GITHUB_OUTPUT
-        
-      - name: Create Kafka Namespace 
-        id: create-kafka-namespace
-        if: steps.prepare-workload-identity-env-vars.outcome == 'success'
-        run: |
-          result=$(kubectl get namespace kafka 2>&1 || true)
-          if [[ $result == *"not found"* ]]; then
-              echo "kafka namespace not found. Create kafka namespace..."
-              kubectl create namespace kafka
-          else
-              echo "kafka namespace already exists."
-          fi
       
       - name: Create Service Account
         id: create-service-account
-        if: steps.create-kafka-namespace.outcome == 'success'
+        if: steps.prepare-workload-identity-env-vars.outcome == 'success'
         run: |
-          kubectl delete sa -n kafka workload-identity-sa 2>&1 || true
+          kubectl delete sa workload-identity-sa 2>&1 || true
           cat <<EOF | kubectl apply -f - 
           apiVersion: v1 
           kind: ServiceAccount 
@@ -83,7 +71,6 @@ jobs:
             annotations: 
               azure.workload.identity/client-id: ${{ steps.prepare-workload-identity-env-vars.outputs.USER_ASSIGNED_CLIENT_ID }}
             name: workload-identity-sa 
-            namespace: kafka 
           EOF
       
       - name: Setup Workload Identity
@@ -95,5 +82,5 @@ jobs:
               echo "Federated identity already exists"
           else
               echo "Federated identity not found. Creating... "
-              az identity federated-credential create --name myFedIdentity --identity-name $USER_ASSIGNED_IDENTITY_NAME --resource-group $RESOURCE_GROUP --issuer ${{ steps.prepare-workload-identity-env-vars.outputs.AKS_OIDC_ISSUER }} --subject system:serviceaccount:kafka:workload-identity-sa
+              az identity federated-credential create --name myFedIdentity --identity-name $USER_ASSIGNED_IDENTITY_NAME --resource-group $RESOURCE_GROUP --issuer ${{ steps.prepare-workload-identity-env-vars.outputs.AKS_OIDC_ISSUER }} --subject system:serviceaccount:default:workload-identity-sa
           fi
