@@ -7,7 +7,7 @@ on:
         description: AKS Cluster Name
         value: ${{ jobs.create-aks-cluster.outputs.cluster-name }}
   workflow_dispatch:
-    
+  
 jobs:
   create-aks-cluster:
     name: Create AKS Cluster
@@ -22,14 +22,7 @@ jobs:
 
       - name: Get Workflow ID
         id: generate-id
-        run: echo "id=$(openssl rand -hex 8 | tr -d '\n')" >> $GITHUB_OUTPUT
-      
-      - name: Log into Azure
-        run: |
-          az login --service-principal \
-          --username ${{ secrets.AZURE_SERVICE_PRINCIPAL_APP_ID }} \
-          --password ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }} \
-          --tenant ${{ secrets.AZURE_SERVICE_PRINCIPAL_TENANT }}
+        run: echo "id=$(openssl rand -hex 8 | tr -d '\n')" >> $GITHUB_OUTPUT     
 
       - name: Install Dependencies 
         id: install-dependencies 
@@ -42,7 +35,14 @@ jobs:
             echo "aks-preview extension not found. Installing aks-preview..."
             az extension add --name aks-preview
           fi
-
+      
+      - name: Log into Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          
       - name: Create AKS Cluster
         id: create-aks-cluster
         if: steps.install-dependencies.outcome == 'success'
