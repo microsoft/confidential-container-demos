@@ -21,12 +21,12 @@ on:
         type: string
       consumer-image: 
         description: "Consumer Image"
-        default: "fishersnpregistry.azurecr.io/consumerforeventhub:6"
+        default: "mcr.microsoft.com/acc/samples/kafka/consumer:2.0"
         required: true
         type: string
       producer-image: 
         description: "Producer Image"
-        default: "fishersnpregistry.azurecr.io/producerforeventhub:8"
+        default: "mcr.microsoft.com/acc/samples/kafka/producer:2.0"
         required: true
         type: string
   merge_group:
@@ -53,9 +53,9 @@ jobs:
           echo "Extracting Environment Variables"
           echo "Triggering event is ${{ github.event_name }}"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "key-release-image=fishersnpregistry.azurecr.io/skrdb:1" >> $GITHUB_OUTPUT
-            echo "consumer-image=fishersnpregistry.azurecr.io/consumerforeventhub:6" >> $GITHUB_OUTPUT
-            echo "producer-image=fishersnpregistry.azurecr.io/producerforeventhub:8" >> $GITHUB_OUTPUT
+            echo "key-release-image=mcr.microsoft.com/aci/skr:2.7" >> $GITHUB_OUTPUT
+            echo "consumer-image=mcr.microsoft.com/acc/samples/kafka/consumer:2.0" >> $GITHUB_OUTPUT
+            echo "producer-image=mcr.microsoft.com/acc/samples/kafka/producer:2.0" >> $GITHUB_OUTPUT
           else
             echo "key-release-image=${{ format('{0}/{1}', inputs.sidecar-registry, inputs.key-release-image) }}" >> $GITHUB_OUTPUT
             echo "consumer-image=${{ inputs.consumer-image }}" >> $GITHUB_OUTPUT

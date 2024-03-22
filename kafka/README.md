@@ -167,8 +167,8 @@ NOTE: Only the subscription owner can setup role access for AKV/mHSM, so if you 
 #### Generate Consumer Pod YAML Files (Only If Using Azure Event Hub Resource)
 
 ```bash
-export SIDECAR_IMAGE=""
-export CONSUMER_IMAGE=""
+export SIDECAR_IMAGE="mcr.microsoft.com/aci/skr:2.7"
+export CONSUMER_IMAGE="mcr.microsoft.com/acc/samples/kafka/consumer:2.0"
 SIDECAR_IMAGE=$(echo $SIDECAR_IMAGE | sed 's/\//\\\//g')
 CONSUMER_IMAGE=$(echo $CONSUMER_IMAGE | sed 's/\//\\\//g')
 sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$MAA_ENDPOINT/'"$MAA_ENDPOINT"'/g; s/$AZURE_AKV_RESOURCE_ENDPOINT/'"$AZURE_AKV_RESOURCE_ENDPOINT"'/g; s/$CONSUMER_IMAGE/'"$CONSUMER_IMAGE"'/g; s/$SIDECAR_IMAGE/'"$SIDECAR_IMAGE"'/g' consumer/consumer.yaml
@@ -222,7 +222,7 @@ az keyvault key list --vault-name <Name of AKV> -o table | grep kafka-demo-pipel
 #### Generate Producer Pod YAML Files (Only If Using Azure Event Hub Resource)
 
 ```bash
-export PRODUCER_IMAGE=""
+export PRODUCER_IMAGE="mcr.microsoft.com/acc/samples/kafka/producer:2.0"
 PRODUCER_IMAGE=$(echo $PRODUCER_IMAGE | sed 's/\//\\\//g')
 sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$PRODUCER_IMAGE/'"$PRODUCER_IMAGE"'/g ' producer/producer.yaml
 
