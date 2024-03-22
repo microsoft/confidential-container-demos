@@ -97,14 +97,3 @@ jobs:
               echo "Federated identity not found. Creating... "
               az identity federated-credential create --name myFedIdentity --identity-name $USER_ASSIGNED_IDENTITY_NAME --resource-group $RESOURCE_GROUP --issuer ${{ steps.prepare-workload-identity-env-vars.outputs.AKS_OIDC_ISSUER }} --subject system:serviceaccount:kafka:workload-identity-sa
           fi
-          
-      - name: Setup Kafka Cluster 
-        id: apply-kafka-cr-files
-        if: steps.setup-workload-identity.outcome == 'success'
-        run: |
-          kubectl create -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka 2>&1
-          # Apply the `Kafka` Cluster CR file
-          kubectl apply -f https://strimzi.io/examples/latest/kafka/kafka-persistent-single.yaml -n kafka 2>&1
-  
-          echo "Wait while Kubernetes starts the required pods, services, and so on..."
-          kubectl wait kafka/my-cluster --for=condition=Ready --timeout=300s -n kafka 
