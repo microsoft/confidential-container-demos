@@ -106,7 +106,7 @@ Below are the MAA endpoints for the four regions Confidential Container AKS is c
 - North Europe: sharedneu.neu.attest.azure.net
 - West Europe: sharedweu.weu.attest.azure.net
 
-Set the `MAA_ENDPOINT` environement variable. We are using `East US` as an example: 
+Set the `MAA_ENDPOINT` environment variable. We are using `East US` as an example: 
 
 ```bash
 export MAA_ENDPOINT="sharedeus.eus.attest.azure.net"
@@ -118,7 +118,7 @@ Setup dependency resources (AKV/mHSM):  The user needs to instantiate an [premiu
 Important NOTE: In this demo, we include both AKV and mHSM related instructions and the script for setting up RSA asymmetric keys supports both AKV and mHSM. 
 Although using an mHSM is recommended for production, due to its high cost, we recommend using AKV for running this demo. 
 
-Set the `AZURE_AKV_RESOURCE_ENDPOINT` environement variable:
+Set the `AZURE_AKV_RESOURCE_ENDPOINT` environment variable:
 
 ```bash
 export AZURE_AKV_RESOURCE_ENDPOINT="<akv-name>.vault.azure.net or <mHSM-name>.managedhsm.azure.net"
