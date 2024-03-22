@@ -95,12 +95,12 @@ jobs:
     with: 
       cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
 
-  cleanup: 
-    name: Clean Up
-    if: always()
-    uses: ./.github/workflows/_cleanup.yml
-    needs: [prepare, create-aks-cluster, setup-aks-cluster, deploy-kafka-test, test-workload]
-    secrets: inherit
+  # cleanup: 
+  #   name: Clean Up
+  #   if: always()
+  #   uses: ./.github/workflows/_cleanup.yml
+  #   needs: [prepare, create-aks-cluster, setup-aks-cluster, deploy-kafka-test, test-workload]
+  #   secrets: inherit
 
   
 

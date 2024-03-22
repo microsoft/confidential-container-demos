@@ -95,3 +95,31 @@ echo \"attester_endpoint\": \"${MAA_ENDPOINT}\" >> ${key_info_file}
 echo }  >> ${key_info_file}
 echo "......Generated key info file ${key_info_file}"
 echo "......Key setup successful!"
+
+sleep 2
+PRODUCER_IMAGE=$(echo $PRODUCER_IMAGE | sed 's/\//\\\//g')
+sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$PRODUCER_IMAGE/'"$PRODUCER_IMAGE"'/g ' producer/producer.yaml
+awk '{printf "%s", $0; if (NR > 1) printf "auniqueidentifier"} END {print ""}' kafka-demo-pipeline-pub.pem > kafka-demo-pipeline-pub-temp.pem
+cat kafka-demo-pipeline-pub-temp.pem
+export PUBKEY=$(cat kafka-demo-pipeline-pub-temp.pem)
+PUBKEY=$(echo $PUBKEY | sed 's/\//\\\//g')
+sed -i "s/\$PUBKEY/${PUBKEY}/g" producer/producer.yaml
+sed -i 's/auniqueidentifier/\n/g ' producer/producer.yaml
+sed -i 's/-----BEGIN PUBLIC KEY-----/-----BEGIN PUBLIC KEY-----\n/g ' producer/producer.yaml
+sed -i '25s/^/            /' producer/producer.yaml
+sed -i '26s/^/            /' producer/producer.yaml
+sed -i '27s/^/            /' producer/producer.yaml
+sed -i '28s/^/            /' producer/producer.yaml
+sed -i '29s/^/            /' producer/producer.yaml
+sed -i '30s/^/            /' producer/producer.yaml
+sed -i '31s/^/            /' producer/producer.yaml
+sed -i '32s/^/            /' producer/producer.yaml
+sed -i '33s/^/            /' producer/producer.yaml
+sed -i '34s/^/            /' producer/producer.yaml
+cat producer/producer.yaml
+
+
+kubectl apply -f consumer/consumer.yaml 2>&1
+sleep 10
+kubectl apply -f producer/producer.yaml 2>&1
+sleep 10
