@@ -39,10 +39,6 @@ jobs:
       - name: Install Dependencies 
         id: install-dependencies 
         run: |
-            curl -L https://github.com/a8m/envsubst/releases/download/v1.2.0/envsubst-`uname -s`-`uname -m` -o envsubst --fail-with-body 
-            chmod +x envsubst
-            sudo mv envsubst /usr/local/bin
-
             result=$(az extension list -o table  2>&1 || true)
             if [[ $result == *"confcom"* ]]; then
               echo "confcom already installed, upgrading confcom version."
@@ -72,6 +68,34 @@ jobs:
           cd main/kafka
           chmod +x test-setup.sh
           bash test-setup.sh kafka-demo-pipeline $AZURE_AKV_RESOURCE_ENDPOINT
+
+          sleep 2
+          PRODUCER_IMAGE=$(echo $PRODUCER_IMAGE | sed 's/\//\\\//g')
+          sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$PRODUCER_IMAGE/'"$PRODUCER_IMAGE"'/g ' producer/producer.yaml
+          awk '{printf "%s", $0; if (NR > 1) printf "auniqueidentifier"} END {print ""}' kafka-demo-pipeline-pub.pem > kafka-demo-pipeline-pub-temp.pem
+          cat kafka-demo-pipeline-pub-temp.pem
+          export PUBKEY=$(kafka-demo-pipeline-pub-temp.pem)
+          PUBKEY=$(echo $PUBKEY | sed 's/\//\\\//g')
+          sed -i "s/\$PUBKEY/${PUBKEY}/g" producer/producer.yaml
+          sed -i 's/auniqueidentifier/\n/g ' producer/producer.yaml
+          sed -i 's/-----BEGIN PUBLIC KEY-----/-----BEGIN PUBLIC KEY-----\n/g ' producer/producer.yaml
+          sed -i '25s/^/            /' producer/producer.yaml
+          sed -i '26s/^/            /' producer/producer.yaml
+          sed -i '27s/^/            /' producer/producer.yaml
+          sed -i '28s/^/            /' producer/producer.yaml
+          sed -i '29s/^/            /' producer/producer.yaml
+          sed -i '30s/^/            /' producer/producer.yaml
+          sed -i '31s/^/            /' producer/producer.yaml
+          sed -i '32s/^/            /' producer/producer.yaml
+          sed -i '33s/^/            /' producer/producer.yaml
+          sed -i '34s/^/            /' producer/producer.yaml
+          cat producer/producer.yaml
+
+
+          kubectl apply -f consumer/consumer.yaml 2>&1
+          sleep 10
+          kubectl apply -f producer/producer.yaml 2>&1
+          sleep 10
 
           
       
