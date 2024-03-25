@@ -259,7 +259,7 @@ This example demonstrates how to enhance the security of your Apache Kafka clust
 
 ```bash
 az eventhubs eventhub delete -n $EVENT_HUB_NAME -g $RESOURCE_GROUP --namespace-name $EVENT_HUB_NAMESPACE
-az eventhubs namespace delete -n $EVENT_HUB_NAMESPACE -g $RESOURCE_GROUP-+
+az eventhubs namespace delete -n $EVENT_HUB_NAMESPACE -g $RESOURCE_GROUP
 kubectl delete –f producer/producer.yaml  
 kubectl delete –f consumer/consumer.yaml  
 ```
