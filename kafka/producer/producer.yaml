@@ -7,24 +7,25 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: kafka-producer
-  namespace: kafka
+  labels:
+    azure.workload.identity/use: "true"
 spec:
+  serviceAccountName: workload-identity-sa
   containers:
-    - image: "mcr.microsoft.com/acc/samples/kafka/producer:1.0"
+    - image: $PRODUCER_IMAGE
       name: kafka-producer
       command:
         - /produce
       env:
-        - name: TOPIC
-          value: kafka-demo-topic
         - name: MSG
           value: "Azure Confidential Computing"
         - name: PUBKEY
           value: |-
-            -----BEGIN PUBLIC KEY-----
-            MIIBojAN***AE=
-            -----END PUBLIC KEY-----
+            $PUBKEY
+        - name: EVENTHUB_NAMESPACE
+          value: $EVENTHUB_NAMESPACE
+        - name: EVENTHUB
+          value: $EVENTHUB
       resources:
         limits:
-          memory: 1Gi
           cpu: 200m

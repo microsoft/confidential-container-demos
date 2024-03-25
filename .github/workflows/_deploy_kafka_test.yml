@@ -39,10 +39,6 @@ jobs:
       - name: Install Dependencies 
         id: install-dependencies 
         run: |
-            curl -L https://github.com/a8m/envsubst/releases/download/v1.2.0/envsubst-`uname -s`-`uname -m` -o envsubst --fail-with-body 
-            chmod +x envsubst
-            sudo mv envsubst /usr/local/bin
-
             result=$(az extension list -o table  2>&1 || true)
             if [[ $result == *"confcom"* ]]; then
               echo "confcom already installed, upgrading confcom version."
