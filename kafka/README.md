@@ -133,9 +133,7 @@ az eventhubs eventhub create --name $EVENTHUB --resource-group $RESOURCE_GROUP -
 
 #### Setup role access for the managed identity 
 
-Assign the managed identity you created `USER_ASSIGNED_IDENTITY_NAME` in "Deploy and configure workload identity" step with the correct access permissions. 
-
-The managed identity needs Key Vault Crypto Officer and Key Vault Crypto User roles if using AKV key vault or Managed HSM Crypto Officer and Managed HSM Crypto User roles for /keys if using AKV managed HSM. 
+Assign the managed identity you created `USER_ASSIGNED_IDENTITY_NAME` in "Deploy and configure workload identity" step with the correct access permissions to the keyvault: Key Vault Crypto Service Release User role (previously Key Vault Crypto Officer and Key Vault Crypto User) if using AKV key vault or Managed HSM Crypto Service Release User role (previously Managed HSM Crypto Officer and Managed HSM Crypto User) for keys if using AKV managed HSM. 
 The managed identity you created will be used for accessing the key vault during workload runtime. 
 Thus, this step is for granting key vault access to the managed identity you created. 
 
@@ -149,18 +147,13 @@ This demo depends on users running [setup-key.sh](setup-key.sh) script to setup 
 
 ```bash
 # using mHSM
-az keyvault role assignment create --hsm-name mhsm-name --assignee alias@microsoft.com --role "Managed HSM Crypto User" --scope /keys --subscription 85c****bdf8
-az keyvault role assignment create --hsm-name mhsm-name --assignee alias@microsoft.com --role "Managed HSM Crypto Officer" --scope /keys --subscription 85c****bdf8
+az keyvault role assignment create --hsm-name mhsm-name --assignee alias@microsoft.com --role "Managed HSM Crypto Service Release User" --scope /keys --subscription 85c****bdf8
 
-# using AKV. Replace <alias> with your own alias.  
-AKV_SCOPE=`az keyvault show --name <AZURE_AKV_RESOURCE_NAME> --query id --output tsv` 
-az role assignment create --role "Key Vault Crypto Officer" --assignee <alias>@microsoft.com --scope $AKV_SCOPE
-az role assignment create --role "Key Vault Crypto User" --assignee <alias>@microsoft.com --scope $AKV_SCOPE
-
+# using AKV
+az role assignment create --role "Key Vault Crypto Service Release User" --assignee <alias>@microsoft.com --scope /keys --subscription 85c****bdf8
 ```
 
 NOTE: Only the subscription owner can setup role access for AKV/mHSM, so if you are seeing authorization related error messages during role access setup steps, please seek out the proper personel to setup role access. 
-
 
 #### Generate Consumer Pod YAML Files (Only If Using Azure Event Hub Resource)
 
