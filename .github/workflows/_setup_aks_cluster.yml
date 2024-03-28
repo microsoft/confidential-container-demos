@@ -5,7 +5,7 @@ on:
     inputs:
       cluster-name:
         required: true
-        description: AKS Cluster Name
+        description: "AKS Cluster Name"
         type: string
   workflow_dispatch:
     

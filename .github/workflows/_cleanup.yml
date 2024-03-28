@@ -6,7 +6,30 @@ on:
     - cron: "0 0 * * *"
 
 jobs:
-  remove-workload-and-cluster:
+  cleanup_registry:
+    name: Cleanup Container Registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log into Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ secrets.AZURE_REGISTRY_NAME }}
+
+      - name: Cleanup Registry
+        run: |
+          # The filter looks for at least one digit as a proxy for auto
+          # generated tags
+          az acr run \
+            --cmd "acr purge --filter 'private/acc/samples/kafka/.*:.*' --ago 1d" \
+            --registry ${{ secrets.AZURE_REGISTRY_URL }} \
+            /dev/null
+
+  cleanup-cluster:
     name: Clean Up
     runs-on: ubuntu-latest
     steps:
