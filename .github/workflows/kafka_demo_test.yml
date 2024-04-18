@@ -94,6 +94,7 @@ jobs:
     if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
     secrets: inherit
     with: 
+      demo-name: kafka
       workflow-id:  ${{ github.sha }}
   
   setup-aks-cluster:
@@ -116,8 +117,6 @@ jobs:
       key-release-image: ${{ needs.prepare.outputs.key-release-image }}
       consumer-image: ${{ needs.prepare.outputs.consumer-image }}
       producer-image: ${{ needs.prepare.outputs.producer-image }}
-      repo-type: ${{ (github.event_name == 'pull_request' && 'private') || 'public' }}
-      workflow-id: ${{ github.sha }}
 
   test-workload: 
     name: Test Workload 
