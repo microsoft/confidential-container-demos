@@ -1,0 +1,114 @@
+name: Hello World AKS Test 
+
+on:
+  pull_request:
+    branches: 
+      - main
+    paths:
+      - .github/workflows/**
+      - hello-world/AKS/**
+      - '!**/README.md'
+      - '!.github/workflows/release.yml'
+      - '!.github/workflows/ci.yml'
+  workflow_dispatch:
+    inputs:
+      helloworld-image: 
+        description: "Hello World AKS Image"
+        default: "mcr.microsoft.com/acc/samples/aks/helloworld:1.7"
+        required: true
+        type: string
+      debug:
+        description: "Debug Flag"
+        default: false
+        required: false
+        type: boolean
+  merge_group:
+    branches:
+      - main
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
+  attestations: write
+  packages: write
+  
+jobs:
+  prepare:
+    name: Extract Environment Variables
+    runs-on: ubuntu-latest
+    outputs:
+        helloworld-image: ${{ steps.extract-envs.outputs.helloworld-image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract Envs
+        id: extract-envs
+        run: | 
+          echo "Extracting Environment Variables"
+          echo "Triggering event is ${{ github.event_name }}"
+          # builds new images from source for PR
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "helloworld-image=private/${{ github.actor }}/acc/samples/aks/helloworld:${{ github.sha }}" >> $GITHUB_OUTPUT
+          # uses the provided helloworld image or default for workflow_dispatch
+          else
+            echo "helloworld-image=${{ inputs.helloworld-image }}" >> $GITHUB_OUTPUT
+          fi
+
+  push_images:
+    name: Push Images to Private Registry for Testing
+    needs: [prepare]
+    uses: ./.github/workflows/_push_image.yml
+    if: github.event_name == 'pull_request'
+    secrets: inherit
+    with:
+      image: "private/${{ github.actor }}/acc/samples/aks/helloworld"
+      tag: "${{ github.sha }}"
+      docker_context: hello-world/AKS
+      dockerfile_path: hello-world/AKS
+      repo_type: private
+
+  create-aks-cluster:
+    name: Create AKS Cluster
+    needs: [prepare, push_images]
+    uses: ./.github/workflows/_create_aks_cluster.yml
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
+    secrets: inherit
+    with: 
+      demo-name: hello
+      workflow-id:  ${{ github.sha }}
+
+  deploy-helloworld-aks-test:
+    name: Deploy Hello World AKS Test
+    needs: [prepare, push_images, create-aks-cluster]
+    uses: ./.github/workflows/_deploy_helloworld_aks_test.yml
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
+    secrets: inherit
+    with: 
+      cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
+      helloworld-image: ${{ needs.prepare.outputs.helloworld-image }}
+      workflow-id:  ${{ github.sha }}
+
+  test-workload: 
+    name: Test Workload 
+    uses: ./.github/workflows/_test_helloworld_aks.yml
+    needs: [push_images, create-aks-cluster, deploy-helloworld-aks-test]
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
+    secrets: inherit 
+    with: 
+        workflow-id:  ${{ github.sha }}
+        cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
+
+  cleanup: 
+    name: Clean Up
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
+    uses: ./.github/workflows/_cleanup.yml
+    needs: [push_images, create-aks-cluster, test-workload]
+    secrets: inherit
+    with:
+        cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
+        debug: ${{ inputs.debug || false }}
+        test-name: hello-world-aks
+
+  
+

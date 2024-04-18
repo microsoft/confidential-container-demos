@@ -1,0 +1,87 @@
+name: Test Hello World AKS Workload
+
+on:
+  workflow_call:
+    inputs:
+      workflow-id:
+        description: "Workflow ID"
+        required: true
+        type: string
+      cluster-name:
+        required: true
+        description: "AKS Cluster Name"
+        type: string
+
+jobs:
+  test-helloworld-aci:
+    name: Test Hello World AKS
+    runs-on: ubuntu-latest
+    env: 
+        RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }} 
+        WORKFLOW_ID: ${{ inputs.workflow-id }}
+        CLUSTER_NAME: ${{ inputs.cluster-name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log into Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get Service IP Address
+        run: |
+          az aks get-credentials --name $CLUSTER_NAME --resource-group $RESOURCE_GROUP  --overwrite-existing
+          max_retries=5
+          retries=0
+          while [ $retries -lt $max_retries ]; do
+              echo "Running kubectl command to get service IP address."
+              SERVICE_IP=$(kubectl get services helloworld-service \
+                  --output jsonpath='{.status.loadBalancer.ingress[0].ip}' \
+                    | tr -d \')
+              if [[ -z $SERVICE_IP ]]; then
+                  echo "Service IP is not available, retrying in 5 seconds..."
+                  retries=$((retries+1))
+              else
+                  echo "Service IP was retrieved successfully."
+                  echo "Service IP is $SERVICE_IP"
+                  break  # Exit the loop on successful attempt
+              fi
+              sleep 5
+          done
+          echo SERVICE_IP=$SERVICE_IP >> $GITHUB_ENV
+
+      - name: Check Curl Results
+        run: |
+          echo "Wait for pod readiness before checking expected message."
+          kubectl wait --for=condition=ready pod/helloworld --timeout=180s || {
+            echo "Pod is not ready within the acceptable time range. Printing out kubectl describe output."
+            echo $(kubectl describe pod helloworld)
+            exit 1 
+          }
+
+          max_retries=5
+          retries=0
+          while [ $retries -lt $max_retries ]; do
+              echo "Running curl test on $SERVICE_IP:80"
+              TEST_RESPONSE=$(curl -s $SERVICE_IP:80)
+
+              if [[ ! $TEST_RESPONSE =~ "Confidential Pods on Azure Kubernetes Service!" ]]; then
+                  echo "Curl did not return expected result"
+                  echo $TEST_RESPONSE
+                  echo "Returned result does not contain text that indicates a passing test, retrying in 5 seconds..."
+                  retries=$((retries+1))
+              else
+                  echo "Returned result contains text that indicates a passing test."
+                  echo "Returned result is $TEST_RESPONSE"
+                  break  # Exit the loop on successful attempt
+              fi
+              sleep 5
+          done
+
+          if [ $retries -eq $max_retries ]; then
+            echo "The operation has been tried $retries times without success."
+            exit 1
+          fi
