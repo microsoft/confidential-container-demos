@@ -4,16 +4,77 @@ on:
   workflow_call:
     inputs:
       cluster-name:
-        required: true
+        required: false
         description: AKS Cluster Name
         type: string
       skr-client-kid:
-        required: true
+        required: false
         description: SKR key id
         default: "default-skr-client-kid"
         type: string
+      debug:
+        description: "Debug Flag"
+        default: false
+        required: false
+        type: boolean
+      test-name:
+        description: "Test Name"
+        required: true
+        type: string
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
+  cleanup-running-acis:
+    name: Cleanup Running Container Groups
+    runs-on: ubuntu-latest
+    if: ${{ inputs.debug == false || false }}
+    env: 
+      RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }} 
+    steps:
+      - name: Log into Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Delete All Container Groups
+        run: |
+          RUNNING_CONTAINERS=$(az container list \
+          --resource-group $RESOURCE_GROUP \
+          --query "[?!starts_with(name, 'uptime-')]")
+
+          for container in $(echo $RUNNING_CONTAINERS | jq -r '.[].id'); do
+              echo "Deleting container group: ${container}"
+              az resource delete --ids ${container}
+          done
+
+  cleanup-failed-acis:
+    name: Cleanup Failed Container Groups
+    runs-on: ubuntu-latest
+    if: ${{ inputs.debug == false || false }}
+    env: 
+      RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }} 
+    steps:
+      - name: Log into Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Delete Failed Container Groups
+        run: |
+          NON_RUNNING_CONTAINERS=$(az container list \
+          --resource-group $RESOURCE_GROUP \
+          --query "[?provisioningState=='Failed' || provisioningState=='Unhealthy']")
+
+          for container in $(echo $NON_RUNNING_CONTAINERS | jq -r '.[].id'); do
+          echo "Deleting container group: ${container}"
+          az resource delete --ids ${container}
+          done
+
   cleanup_registry:
     name: Cleanup Container Registry
     runs-on: ubuntu-latest
@@ -25,23 +86,32 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Cleanup Public Azure Container Registry
-        if: github.event_name != 'pull_request'
+      - name: Cleanup Hello World ACI Images
+        if: ${{ inputs.test-name == 'hello-world-aci' }}
         run: |
-          az acr login --name ${{ secrets.AZURE_REGISTRY_NAME }}
-          az acr repository delete --name ${{ secrets.AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/kafka/consumer:${{ github.sha }} --yes
-          az acr repository delete --name ${{ secrets.AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/kafka/producer:${{ github.sha }} --yes
+          # adding || true so that it doesn't fail if the image doesn't exist (i.e. helloworld didn't run)
+          az acr login --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }}
+          az acr repository delete --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/aci/helloworld:${{ github.sha }} --yes || true
 
-      - name: Cleanup Test Azure Container Registry
-        if: github.event_name == 'pull_request'
+      - name: Cleanup Hello World AKS Images
+        if: ${{ inputs.test-name == 'hello-world-aks' }}
         run: |
-          az acr login --name ${{ secrets.TEST_AZURE_REGISTRY_NAME }}
-          az acr repository delete --name ${{ secrets.TEST_AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/kafka/consumer:${{ github.sha }} --yes
-          az acr repository delete --name ${{ secrets.TEST_AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/kafka/producer:${{ github.sha }} --yes
+          # adding || true so that it doesn't fail if the image doesn't exist (i.e. helloworld didn't run)
+          az acr login --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }}
+          az acr repository delete --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/aks/helloworld:${{ github.sha }} --yes || true
+
+      - name: Cleanup Kafka Images
+        if: ${{ inputs.test-name == 'kafka' }}
+        run: |
+          # adding || true so that it doesn't fail if the image doesn't exist (i.e. kafka didn't run)
+          az acr login --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }}
+          az acr repository delete --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/kafka/consumer:${{ github.sha }} --yes || true
+          az acr repository delete --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/kafka/producer:${{ github.sha }} --yes || true
 
   cleanup-cluster:
-    name: Clean Up
+    name: Clean Up Cluster
     runs-on: ubuntu-latest
+    if: ${{ inputs.cluster-name != '' }}
     steps:
       - name: Log into Azure
         uses: azure/login@v2
