@@ -1,0 +1,101 @@
+name: Hello World ACI Test
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/**
+      - hello-world/ACI/**
+      - '!**/README.md'
+      - '!.github/workflows/release.yml'
+      - '!.github/workflows/ci.yml'
+  workflow_dispatch:
+    inputs:
+      helloworld-image:
+        description: "Hello World ACI Image"
+        default: "mcr.microsoft.com/acc/samples/aci/helloworld:2.9"
+        required: true
+        type: string
+      debug:
+        description: "Debug Flag"
+        default: false
+        required: false
+        type: boolean
+  merge_group:
+    branches:
+      - main
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
+  attestations: write
+  packages: write
+
+jobs:
+  prepare:
+    name: Extract Environment Variables
+    runs-on: ubuntu-latest
+    outputs:
+        helloworld-image: ${{ steps.extract-envs.outputs.helloworld-image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract Envs
+        id: extract-envs
+        run: |
+          echo "Extracting Environment Variables"
+          echo "Triggering event is ${{ github.event_name }}"
+          # builds new images from source for PR
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "helloworld-image=private/${{ github.actor }}/acc/samples/aci/helloworld:${{ github.sha }}" >> $GITHUB_OUTPUT
+          # uses the provided helloworld image or default for workflow_dispatch
+          else
+            echo "helloworld-image=${{ inputs.helloworld-image }}" >> $GITHUB_OUTPUT
+          fi
+
+  push_images:
+    name: Push Images to Private Registry for Testing
+    needs: [prepare]
+    uses: ./.github/workflows/_push_image.yml
+    if: github.event_name == 'pull_request'
+    secrets: inherit
+    with:
+      image: "private/${{ github.actor }}/acc/samples/aci/helloworld"
+      tag: "${{ github.sha }}"
+      docker_context: hello-world/ACI/app
+      dockerfile_path: hello-world/ACI/app
+      repo_type: private
+
+  deploy-helloworld-aci-test:
+    name: Deploy Hello World ACI Test
+    needs: [prepare, push_images]
+    uses: ./.github/workflows/_deploy_aci.yml
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
+    secrets: inherit
+    with:
+      workflow-id:  ${{ github.sha }}
+      helloworld-image: ${{ needs.prepare.outputs.helloworld-image }}
+
+  test-workload:
+    name: Test Workload
+    uses: ./.github/workflows/_test_helloworld_aci.yml
+    needs: [push_images, deploy-helloworld-aci-test]
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
+    secrets: inherit
+    with:
+        workflow-id:  ${{ github.sha }}
+
+  cleanup:
+    name: Clean Up
+    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
+    uses: ./.github/workflows/_cleanup.yml
+    needs: [push_images, test-workload]
+    secrets: inherit
+    with:
+        debug: ${{ inputs.debug || false }}
+        test-name: hello-world-aci
+
+
+

@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-    tags:        
+    tags:
       - 'aci/helloworld:v*'
       - 'aks/helloworld:v*'
       - 'kafka/consumer:v*'
@@ -13,6 +13,12 @@ on:
       - .github/workflows/release.yml
       - hello-world/**
       - kafka/**
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
+  attestations: write
+  packages: write
 
 jobs:
   parse_tag:
@@ -33,7 +39,7 @@ jobs:
           if [[ "${{ contains(github.ref, 'rc') }}" ]]; then
             repo_type="private"
           fi
-          
+
           echo "image=$image" >> $GITHUB_OUTPUT
           echo "image_tag=$image_tag" >> $GITHUB_OUTPUT
           echo "repo_type=$repo_type" >> $GITHUB_OUTPUT
@@ -44,18 +50,23 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       docker_context: ${{ steps.get_docker_context.outputs.docker_context }}
+      dockerfile_path: ${{ steps.get_docker_context.outputs.dockerfile_path }}
     steps:
-      - name: Get Docker Context
+      - name: Get Docker Context and Dockerfile Path
         id: get_docker_context
         run: |
           if [[ "${{ needs.parse_tag.outputs.image }}" == "aci/helloworld" ]]; then
             context="hello-world/ACI/app"
+            dockerfile_path="hello-world/ACI/app"
           elif [[ "${{ needs.parse_tag.outputs.image }}" == "aks/helloworld" ]]; then
             context="hello-world/AKS"
+            dockerfile_path="hello-world/AKS"
           else
-            context="${{ needs.parse_tag.outputs.image }}"
+            context="."
+            dockerfile_path="${{ needs.parse_tag.outputs.image }}"
           fi
           echo "docker_context=$context" >> $GITHUB_OUTPUT
+          echo "dockerfile_path=$dockerfile_path" >> $GITHUB_OUTPUT
 
   build_and_push:
     name: Build and Push Docker Images
@@ -66,6 +77,7 @@ jobs:
       image: ${{ needs.parse_tag.outputs.repo_type }}/${{ github.actor }}/acc/samples/${{ needs.parse_tag.outputs.image }}
       tag: ${{ needs.parse_tag.outputs.image_tag }}
       docker_context: ${{ fromJson(needs.get_docker_context.outputs.docker_context) }}
+      dockerfile_path: ${{ fromJson(needs.get_docker_context.outputs.dockerfile_path) }}
       repo_type: ${{ needs.parse_tag.outputs.repo_type }}
 
   create_release:

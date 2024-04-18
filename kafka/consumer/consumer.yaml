@@ -16,7 +16,11 @@ spec:
       env:
         - name: SkrSideCarArgs
           value: ewogICAgImNlcnRjYWNoZSI6IHsKCQkiZW5kcG9pbnRfdHlwZSI6ICJMb2NhbFRISU0iLAoJCSJlbmRwb2ludCI6ICIxNjkuMjU0LjE2OS4yNTQvbWV0YWRhdGEvVEhJTS9hbWQvY2VydGlmaWNhdGlvbiIKCX0gIAp9
+        - name: LogLevel # enable for debugging SKR
+          value: debug
       command:
+        - /bin/sh
+        - -c
         - /skr.sh
       volumeMounts:
         - mountPath: /opt/confidential-containers/share/kata-containers/reference-info-base64
@@ -35,6 +39,8 @@ spec:
           value: $EVENTHUB_NAMESPACE
         - name: EVENTHUB
           value: $EVENTHUB
+        - name: SOURCE
+          value: $SOURCE_ID
         - name: LOG_FILE
           value: $LOG_FILE
       command:

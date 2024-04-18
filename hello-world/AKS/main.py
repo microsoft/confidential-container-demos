@@ -76,5 +76,5 @@ if __name__ == '__main__':
 
     out = (subprocess.run(["/usr/sbin/nginx", "-g", "daemon off;"],
                           capture_output=True, encoding="UTF-8")).stdout
-    
+
     print(out)

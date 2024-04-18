@@ -16,11 +16,13 @@ if [ $# -ne 2 ] ; then
 	exit 1
 fi
 
+echo "Setting up environment variables for Kafka demo test"
+
 https="https://"
 http="http://"
 KEY_NAME=$1
 
-# if https://, http:// and trailing / exists, remove them from url 
+# if https://, http:// and trailing / exists, remove them from url
 AZURE_AKV_RESOURCE_ENDPOINT=${2#$https}
 AZURE_AKV_RESOURCE_ENDPOINT=${AZURE_AKV_RESOURCE_ENDPOINT#$http}
 AZURE_AKV_RESOURCE_ENDPOINT=${AZURE_AKV_RESOURCE_ENDPOINT%%/*}
@@ -41,6 +43,8 @@ fi
 
 policy_file_name="${KEY_NAME}-release-policy.json"
 
+echo "Generating key release policy file ${policy_file_name}"
+
 echo { \"anyOf\":[ { \"authority\":\"https://${MAA_ENDPOINT}\", \"allOf\":[ > ${policy_file_name}
 echo '{"claim":"x-ms-attestation-type", "equals":"sevsnpvm"},' >> ${policy_file_name}
 
@@ -48,23 +52,33 @@ export EVENTHUB_NAMESPACE=kafka-demo-ehubns
 export EVENTHUB=kafka-demo-topic
 CONSUMER_IMAGE=$(echo $CONSUMER_IMAGE | sed 's/\//\\\//g')
 SIDECAR_IMAGE=$(echo $SIDECAR_IMAGE | sed 's/\//\\\//g')
-sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$SkrClientKID/'"$SkrClientKID"'/g; s/$LOG_FILE/'\"\"'/g; s/$MAA_ENDPOINT/'"$MAA_ENDPOINT"'/g; s/$AZURE_AKV_RESOURCE_ENDPOINT/'"$AZURE_AKV_RESOURCE_ENDPOINT"'/g; s/$CONSUMER_IMAGE/'"$CONSUMER_IMAGE"'/g; s/$SIDECAR_IMAGE/'"$SIDECAR_IMAGE"'/g' consumer/consumer.yaml
+SOURCE_ID_ESC=$(printf '%s\n' "$SOURCE_ID" | sed 's/[\/&]/\\&/g')
+
+sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$SkrClientKID/'"$SkrClientKID"'/g; s/$LOG_FILE/'\"\"'/g; s/$MAA_ENDPOINT/'"$MAA_ENDPOINT"'/g; s/$AZURE_AKV_RESOURCE_ENDPOINT/'"$AZURE_AKV_RESOURCE_ENDPOINT"'/g; s/$CONSUMER_IMAGE/'"$CONSUMER_IMAGE"'/g; s/$SIDECAR_IMAGE/'"$SIDECAR_IMAGE"'/g; s/\$SOURCE_ID/'"$SOURCE_ID_ESC"'/g' consumer/consumer.yaml
 echo "Generating Security Policy for consumer"
 
+echo "genpolicy version"
+az confcom katapolicygen -v
 
-#export WORKLOAD_MEASUREMENT=$(az confcom katapolicygen -y consumer/consumer.yaml --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
-# This is a workaround before confcom extension picks up the Genpolicy new release where it introduces the -d flag
-export WORKLOAD_MEASUREMENT=$(sudo $(pwd)/genpolicy -y consumer/consumer.yaml -p $(pwd)/rules.rego -j $(pwd)/genpolicy-settings.json -d --raw-out | sha256sum | cut -d' ' -f1)
+az confcom katapolicygen -y consumer/consumer.yaml
+#export WORKLOAD_MEASUREMENT=$(az confcom katapolicygen -y consumer/consumer.yaml | base64 --decode | sha256sum | cut -d' ' -f1)
+
+# use these commands to enable debugging the consumer
+UPDATED_POLICY_BASE64=$(python ../util/update-yaml-policy.py --file consumer/consumer.yaml --write)
+export WORKLOAD_MEASUREMENT=$(echo "$UPDATED_POLICY_BASE64" | base64 --decode | sha256sum | cut -d' ' -f1)
+
+echo "Generated workload measurement: ${WORKLOAD_MEASUREMENT}"
 cat consumer/consumer.yaml
+
 if [[ -z "${WORKLOAD_MEASUREMENT}" ]]; then
 	echo "Warning: Env WORKLOAD_MEASUREMENT is not set. Set this to condition releasing your key on your security policy matching the expected value.  Recommended for production workloads."
 else
 	echo {\"claim\":\"x-ms-sevsnpvm-hostdata\", \"equals\":\"${WORKLOAD_MEASUREMENT}\"}, >> ${policy_file_name}
 fi
 
-
 echo {\"claim\":\"x-ms-compliance-status\", \"equals\":\"azure-signed-katacc-uvm\"}, >> ${policy_file_name}
 echo {\"claim\":\"x-ms-sevsnpvm-is-debuggable\", \"equals\":\"false\"}, >> ${policy_file_name}
+echo {\"claim\": \"x-ms-sevsnpvm-vmpl\", \"equals\": \"0\"}, >> ${policy_file_name}
 
 echo '] } ], "version":"1.0.0" }' >> ${policy_file_name}
 echo "......Generated key release policy ${policy_file_name}"
@@ -99,7 +113,7 @@ echo "......Key setup successful!"
 
 sleep 2
 PRODUCER_IMAGE=$(echo $PRODUCER_IMAGE | sed 's/\//\\\//g')
-sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$LOG_FILE/'\"\"'/g; s/$PRODUCER_IMAGE/'"$PRODUCER_IMAGE"'/g ' producer/producer.yaml
+sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$LOG_FILE/'\"\"'/g; s/$PRODUCER_IMAGE/'"$PRODUCER_IMAGE"'/g; s/\$SOURCE_ID/'"$SOURCE_ID_ESC"'/g' producer/producer.yaml
 awk '{printf "%s", $0; if (NR > 1) printf "auniqueidentifier"} END {print ""}' $SkrClientKID-pub.pem > $SkrClientKID-pub-temp.pem
 cat $SkrClientKID-pub-temp.pem
 export PUBKEY=$(cat $SkrClientKID-pub-temp.pem)
@@ -117,8 +131,10 @@ sed -i '31s/^/            /' producer/producer.yaml
 sed -i '32s/^/            /' producer/producer.yaml
 sed -i '33s/^/            /' producer/producer.yaml
 sed -i '34s/^/            /' producer/producer.yaml
+az confcom katapolicygen -y producer/producer.yaml
+# use this command to enable debugging the producer
+# python ../util/update-yaml-policy.py --file producer/producer.yaml
 cat producer/producer.yaml
-
 
 kubectl apply -f consumer/consumer.yaml 2>&1
 sleep 10
