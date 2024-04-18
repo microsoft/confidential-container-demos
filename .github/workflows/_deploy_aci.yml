@@ -1,0 +1,132 @@
+name: Deploy ACI
+
+on:
+  workflow_call:
+    inputs:
+      workflow-id:
+        description: "Workflow ID"
+        required: true
+        type: string
+      helloworld-image:
+        description: "Hello World ACI Image"
+        default: "mcr.microsoft.com/acc/samples/aci/helloworld:2.9"
+        required: true
+        type: string
+      debug:
+        description: "Debug Flag"
+        default: false
+        required: false
+        type: boolean
+  workflow_dispatch:
+    inputs:
+      workflow-id:
+        description: "Workflow ID"
+        required: true
+        type: string
+      helloworld-image:
+        description: "Hello World ACI Image"
+        default: "mcr.microsoft.com/acc/samples/aci/helloworld:2.9"
+        required: true
+        type: string
+      debug:
+        description: "Debug Flag"
+        default: false
+        required: false
+        type: boolean
+
+jobs:
+  deploy-aci:
+    name: Deploy ACI
+    runs-on: ubuntu-latest
+    env:
+      RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+      WORKFLOW_ID: ${{ inputs.workflow-id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log into Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to Public Azure Container Registry
+        if: github.event_name != 'pull_request'
+        run: |
+          az acr login --name ${{ secrets.AZURE_REGISTRY_NAME }}
+
+      - name: Login to Test Azure Container Registry
+        if: github.event_name == 'pull_request'
+        run: |
+          az acr login --name ${{ secrets.TEST_AZURE_REGISTRY_NAME }}
+
+      - name: Install Dependencies
+        id: install-dependencies
+        run: |
+            result=$(az extension list -o table  2>&1 || true)
+            if [[ $result == *"confcom"* ]]; then
+              echo "confcom already installed, upgrading confcom version."
+              az extension update --name confcom
+            else
+              echo "confcom extension not found. Installing confcom..."
+              az extension add --name confcom
+            fi
+
+      - name: Setup Hello World Image Environment Variable
+        run: |
+            # check if official image
+            if [[ "${{ inputs.helloworld-image }}" == *"mcr.microsoft.com"* ]]; then
+              echo HELLO_WORLD_IMAGE='${{ inputs.helloworld-image }}' >> $GITHUB_ENV
+            else
+              echo HELLO_WORLD_IMAGE='${{ (github.event_name != 'pull_request' && secrets.AZURE_REGISTRY_URL) || secrets.TEST_AZURE_REGISTRY_URL }}'/'${{ inputs.helloworld-image }}' >> $GITHUB_ENV
+            fi
+
+      - name: Substitute Environment Variables
+        id: substitute-envs
+        run: |
+            python util/env_substitution.py --file hello-world/ACI/arm-template.json --file-type json
+
+      - name: Generate Security Policy
+        id: generate-security-policy
+        run: |
+            sudo usermod -aG docker $USER
+            if [[ ${{ inputs.debug }} ]]; then
+              az confcom acipolicygen -a hello-world/ACI/arm-template.json --debug
+            else
+              az confcom acipolicygen -a hello-world/ACI/arm-template.json
+            fi
+
+      - name: Deploy ARM Template
+        id: deploy-arm-template
+        run: |
+            az deployment group create \
+                --resource-group $RESOURCE_GROUP \
+                --template-file hello-world/ACI/arm-template.json
+
+      - name: Check Container is Running
+        run: |
+            max_retries=5
+            retries=0
+            while [ $retries -lt $max_retries ]; do
+              CONTAINER_STATE=$(az container show \
+                  --name helloworld-aci-$WORKFLOW_ID \
+                  --resource-group $RESOURCE_GROUP \
+              )
+              if [[ $(echo $CONTAINER_STATE | jq -r '.instanceView.state') == "Running" ]]; then
+                  echo "Container is running."
+                  break  # Exit the loop on successful attempt
+              else
+                  echo "Container is not running yet, retrying in 5 seconds..."
+                  echo "Container state is: "
+                  echo $CONTAINER_STATE | jq
+                  retries=$((retries+1))
+                  sleep 5 # give the container a chance to stabilize
+              fi
+            done
+
+            if [ $retries -eq $max_retries ]; then
+              echo "The operation has been tried $retries times without success."
+              exit 1
+            fi

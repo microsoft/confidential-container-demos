@@ -40,9 +40,9 @@ jobs:
 
       # needed to avoid a bug where imageId and digest output are the same
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
         with:
-          version: v0.8.2
+          version: v0.18.0
 
       - name: Log into Azure
         uses: azure/login@v2
@@ -72,5 +72,5 @@ jobs:
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ inputs.repo_type == 'public' && secrets.AZURE_REGISTRY_URL || inputs.repo_type == 'private' && secrets.TEST_AZURE_REGISTRY_URL }}/${{ inputs.image }}
-          subject-digest: 'sha256:${{steps.build-image.outputs.digest}}'
+          subject-digest: '${{steps.build-image.outputs.digest}}'
           push-to-registry: true

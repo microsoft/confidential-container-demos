@@ -1,0 +1,58 @@
+name: Test Hello World ACI Workload
+
+on:
+  workflow_call:
+    inputs:
+        workflow-id:
+          description: "Workflow ID"
+          required: true
+          type: string
+
+jobs:
+  test-helloworld-aci:
+    name: Test Hello World ACI
+    runs-on: ubuntu-latest
+    env:
+        RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+        WORKFLOW_ID: ${{ inputs.workflow-id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log into Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get Container IP Address
+        run: |
+          echo CONTAINER_IP=$(az container show \
+              --name helloworld-aci-$WORKFLOW_ID \
+              --resource-group $RESOURCE_GROUP \
+              --query ipAddress.ip \
+              --output tsv
+          ) >> $GITHUB_ENV
+
+      - name: Check Curl Results
+        run: |
+          echo "Running curl test on $CONTAINER_IP:80"
+          max_retries=5
+          retries=0
+          while [ $retries -lt $max_retries ]; do
+            TEST_RESPONSE=$(curl -s $CONTAINER_IP:80)
+            if [[ $TEST_RESPONSE =~ "Confidential Containers on Azure Container Instances!" ]]; then
+                echo "Curl returned expected result"
+                echo $TEST_RESPONSE
+                break
+            else
+                echo "Curl did not return expected result"
+                echo $TEST_RESPONSE
+            fi
+          done
+
+          if [ $retries -eq $max_retries ]; then
+            echo "The operation has been tried $retries times without success."
+            exit 1
+          fi

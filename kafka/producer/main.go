@@ -30,6 +30,7 @@ import (
 const eventHubNamespace = "EVENTHUB_NAMESPACE"
 const eventHub = "EVENTHUB"
 const msg = "MSG"
+const source = "SOURCE"
 
 var eventId = 0
 var logLocation = util.GetEnv("LOG_FILE")
@@ -38,7 +39,7 @@ func main() {
 	if len(logLocation) > 0 {
 		f, err := os.OpenFile(logLocation, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0740)
 		if err != nil {
-			log.Printf("Unable to open file log location: %s", err.Error())
+			log.Fatalf("Unable to open file log location: %s", err.Error())
 		}
 		log.SetOutput(f)
 		defer f.Close()
@@ -49,13 +50,10 @@ func main() {
 
 	credential, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		log.Printf("Retrieving Azure Credential failed: %s", err.Error())
-		os.Exit(1)
+		log.Fatalf("Retrieving Azure Credential failed: %s", err.Error())
 	}
 
-	eventHubNamespace := fmt.Sprintf(
-		"%s.servicebus.windows.net",
-		util.GetEnv(eventHubNamespace))
+	eventHubNamespace := fmt.Sprintf("%s.servicebus.windows.net", util.GetEnv(eventHubNamespace))
 
 	// Event Hubs producer
 	producerClient, err := azeventhubs.NewProducerClient(
@@ -65,8 +63,7 @@ func main() {
 		nil)
 
 	if err != nil {
-		log.Printf("Creating Producer Client failed: %s", err.Error())
-		os.Exit(1)
+		log.Fatalf("Creating Producer Client failed: %s", err.Error())
 	}
 
 	defer producerClient.Close(context.Background())
@@ -76,17 +73,16 @@ func main() {
 		// Creates an EventDataBatch, which you can use to pack multiple events together, allowing for efficient transfer.
 		batch, err := producerClient.NewEventDataBatch(context.Background(), newBatchOptions)
 		if err != nil {
-			log.Printf("Creating event batch failed: %s", err.Error())
-			os.Exit(1)
+			log.Fatalf("Creating event batch failed: %s", err.Error())
 		}
 
 		err = batch.AddEventData(event, nil)
 		if err != nil {
-			log.Printf("Adding event data to batch failed: %s", err.Error())
+			log.Fatalf("Adding event data to batch failed: %s", err.Error())
 		}
 
 		if err := producerClient.SendEventDataBatch(context.Background(), batch, nil); err != nil {
-			log.Printf("Event sending failed %s", err.Error())
+			log.Fatalf("Event sending failed %s", err.Error())
 		}
 
 		select {
@@ -104,11 +100,19 @@ func createEventsForDemo() *azeventhubs.EventData {
 	eventId += 1
 	rawMessage := util.GetEnv(msg)
 	value := fmt.Sprintf("Message Id %d: %s", eventId, rawMessage)
+	log.Printf("Sending message: %s", value)
+
 	encryptedValue, err := encryptMessage(value)
 	if err != nil {
-		log.Printf("Encrypting message failed: %s", err.Error())
+		log.Fatalf("Encrypting message failed: %s", err.Error())
 	}
-	return &azeventhubs.EventData{Body: []byte(encryptedValue)}
+	log.Printf("Encrypted message: %s", encryptedValue)
+	return &azeventhubs.EventData{
+		Body: []byte(encryptedValue),
+		Properties: map[string]interface{}{
+			"source": util.GetEnv(source),
+		},
+	}
 }
 
 func encryptMessage(plaintext string) (string, error) {
@@ -120,17 +124,18 @@ func encryptMessage(plaintext string) (string, error) {
 	block, _ := pem.Decode([]byte(pubpem))
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return "Invalid public key", fmt.Errorf("invalid public key: %v", err)
+		return "", fmt.Errorf("invalid public key: %w", err)
 	}
 
 	var ciphertext []byte
 	if pubkey, ok := key.(*rsa.PublicKey); ok {
+		log.Printf("producer modulus (hex head): %x\n", pubkey.N.Bytes()[:32])
 		ciphertext, err = rsa.EncryptOAEP(sha256.New(), crand.Reader, pubkey, []byte(plaintext), nil)
 		if err != nil {
-			return "Failed to encrypt with the public key", fmt.Errorf("failed to encrypt with the public key: %v", err)
+			return "", fmt.Errorf("failed to encrypt with the public key: %w", err)
 		}
 	} else {
-		return "Invalid public RSA key", fmt.Errorf("invalid public RSA key")
+		return "", fmt.Errorf("invalid public RSA key: %v", pubkey)
 	}
 
 	return base64.StdEncoding.EncodeToString(ciphertext), nil

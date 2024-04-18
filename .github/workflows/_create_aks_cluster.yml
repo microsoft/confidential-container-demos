@@ -3,6 +3,10 @@ name: Create AKS Cluster
 on:
   workflow_call:
     inputs:
+      demo-name:
+        description: "Demo Name"
+        required: true
+        type: string
       workflow-id:
         description: "Workflow ID"
         required: true
@@ -17,21 +21,21 @@ on:
         description: "Workflow ID"
         required: true
         type: string
-  
+
 jobs:
   create-aks-cluster:
     name: Create AKS Cluster
     runs-on: ubuntu-latest
-    env: 
-      RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }} 
+    env:
+      RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
     outputs:
       cluster-name: ${{ steps.create-aks-cluster.outputs.cluster-name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4  
+        uses: actions/checkout@v4
 
-      - name: Install Dependencies 
-        id: install-dependencies 
+      - name: Install Dependencies
+        id: install-dependencies
         run: |
           result=$(az extension list -o table  2>&1 || true)
           if [[ $result == *"aks-preview"* ]]; then
@@ -41,22 +45,22 @@ jobs:
             echo "aks-preview extension not found. Installing aks-preview..."
             az extension add --name aks-preview
           fi
-      
+
       - name: Log into Azure
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          
+
       - name: Create AKS Cluster
         id: create-aks-cluster
         if: steps.install-dependencies.outcome == 'success'
-        env: 
-          RUN_ID: ${{ inputs.workflow-id }}
+        env:
+          CLUSTER_NAME: ${{ inputs.demo-name }}-${{ inputs.workflow-id }}
         run: |
           az aks create --resource-group $RESOURCE_GROUP \
-          --name kafka-${RUN_ID} \
+          --name ${CLUSTER_NAME} \
           --os-sku AzureLinux \
           --node-vm-size Standard_DC4as_cc_v5 \
           --tags "Owner=accct" \
@@ -68,4 +72,4 @@ jobs:
           --auto-upgrade-channel patch \
           --node-os-upgrade-channel NodeImage
 
-          echo "cluster-name=kafka-${RUN_ID}" >> $GITHUB_OUTPUT
+          echo "cluster-name=${CLUSTER_NAME}" >> $GITHUB_OUTPUT

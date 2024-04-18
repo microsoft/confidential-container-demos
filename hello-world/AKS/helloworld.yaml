@@ -7,30 +7,20 @@ metadata:
   name: helloworld
 spec:
   containers:
-    - image: "mcr.microsoft.com/acc/samples/aks/helloworld:1.6"
+    - image: "mcr.microsoft.com/acc/samples/aks/helloworld:1.7"
       command:
-        - python3.10
+        - python3
         - main.py
       imagePullPolicy: Always
       name: helloworld
       ports:
         - containerPort: 80
         - containerPort: 443
+      readinessProbe:
+        httpGet:
+          path: /
+          port: 80
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        failureThreshold: 3
   runtimeClassName: kata-cc-isolation
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: helloworld-service
-spec:
-  type: LoadBalancer
-  selector:
-    app: helloworld
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 80
-      name: http
-    - protocol: TCP
-      port: 443
-      name: https

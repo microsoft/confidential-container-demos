@@ -1,4 +1,4 @@
-name: Cleanup All AKS Cluster in Resource Group 
+name: Cleanup All AKS Cluster in Resource Group
 
 on:
   workflow_call:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Log into Azure
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -19,11 +19,11 @@ jobs:
 
       - name: Clean Up
         id: cleanup
-        env: 
+        env:
           RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
-        run: | 
+        run: |
           result=$(az aks list -g $RESOURCE_GROUP --query "[].name" -o tsv)
-          for name in $result 
+          for name in $result
           do
               max_retries=5
               retries=0

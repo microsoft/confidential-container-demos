@@ -26,6 +26,8 @@ spec:
           value: $EVENTHUB_NAMESPACE
         - name: EVENTHUB
           value: $EVENTHUB
+        - name: SOURCE
+          value: $SOURCE_ID
         - name: LOG_FILE
           value: $LOG_FILE
       resources:

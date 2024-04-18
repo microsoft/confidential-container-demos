@@ -1,8 +1,8 @@
 FROM mcr.microsoft.com/devcontainers/base:dev-ubuntu-24.04 AS build
 ENV PROJECT_DIR=~/
-WORKDIR ${PROJECT_DIR}/confidential-container-demos
+WORKDIR ${PROJECT_DIR}/confidential-container-demos/hello-world/ACI/app
 COPY . ./
-RUN chmod +x hello-world/get_verbose_report.sh && ./hello-world/get_verbose_report.sh
+RUN curl -L https://github.com/microsoft/confidential-sidecar-containers/releases/latest/download/verbose-report > verbose-report
 
 FROM mcr.microsoft.com/azurelinux/base/python:3.12
 RUN pip install flask --no-cache-dir
