@@ -5,7 +5,7 @@
 
 module github.com/microsoft/confidential-container-demos/kafka/consumer
 
-go 1.22.1
+go 1.21
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
