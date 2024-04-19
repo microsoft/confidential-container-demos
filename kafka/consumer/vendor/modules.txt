@@ -89,7 +89,7 @@ github.com/google/uuid
 github.com/kylelemons/godebug/diff
 github.com/kylelemons/godebug/pretty
 # github.com/microsoft/confidential-container-demos/kafka/util v0.0.0 => ../util
-## explicit; go 1.21
+## explicit; go 1.22.2
 github.com/microsoft/confidential-container-demos/kafka/util
 # github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 ## explicit; go 1.14
