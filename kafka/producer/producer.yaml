@@ -26,6 +26,8 @@ spec:
           value: $EVENTHUB_NAMESPACE
         - name: EVENTHUB
           value: $EVENTHUB
+        - name: LOG_FILE
+          value: $LOG_FILE
       resources:
         limits:
           cpu: 200m

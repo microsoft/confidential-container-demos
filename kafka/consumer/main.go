@@ -28,6 +28,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
+	"github.com/microsoft/confidential-container-demos/kafka/util"
 )
 
 var keyEnabled bool
@@ -35,7 +36,19 @@ var keyEnabled bool
 const eventHubNamespace = "EVENTHUB_NAMESPACE"
 const eventHub = "EVENTHUB"
 
+var logLocation = util.GetEnv("LOG_FILE")
+
 func main() {
+
+	if len(logLocation) > 0 {
+		f, err := os.OpenFile(logLocation, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0740)
+		if err != nil {
+			log.Printf("Unable to open file log location: %s", err.Error())
+		}
+		log.SetOutput(f)
+		f.Close()
+	}
+
 	relayMessage := make(chan string)
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
@@ -49,25 +62,27 @@ func main() {
 	credential, err := azidentity.NewDefaultAzureCredential(nil)
 	eventHubNamespace := fmt.Sprintf(
 		"%s.servicebus.windows.net",
-		getEnv(eventHubNamespace))
+		util.GetEnv(eventHubNamespace))
 
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Printf("Retrieving Azure Credential failed: %s", err.Error())
+		os.Exit(1)
 	}
 
 	// Event Hubs processor
 	consumerClient, err := azeventhubs.NewConsumerClient(
 		eventHubNamespace,
-		getEnv(eventHub),
+		util.GetEnv(eventHub),
 		azeventhubs.DefaultConsumerGroup,
 		credential,
 		nil)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Printf("Creating Consumer Client failed: %s", err.Error())
+		os.Exit(1)
 	}
 
-	defer consumerClient.Close(context.TODO())
+	defer consumerClient.Close(context.Background())
 
 	partitionClient, err := consumerClient.NewPartitionClient("0", &azeventhubs.PartitionClientOptions{
 		StartPosition: azeventhubs.StartPosition{
@@ -76,10 +91,11 @@ func main() {
 	})
 
 	if err != nil {
-		panic(err)
+		log.Printf("Creating Consumer Partition Client failed: %s", err.Error())
+		os.Exit(1)
 	}
 
-	defer partitionClient.Close(context.TODO())
+	defer partitionClient.Close(context.Background())
 
 	getRoot := func(w http.ResponseWriter, r *http.Request) {
 		data := struct {
@@ -123,15 +139,16 @@ func main() {
 	}
 
 	for {
-		// Will wait up to 1 minute for 100 events. If the context is cancelled (or expires)
+		// Will wait up to 10 seconds for 100 events. If the context is cancelled (or expires)
 		// you'll get any events that have been collected up to that point.
-		receiveCtx, cancel := context.WithTimeout(context.TODO(), time.Second*10)
-		log.Println("Start to receive events ")
+		receiveCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		log.Println("Start to receive events.")
 		events, err := partitionClient.ReceiveEvents(receiveCtx, 100, nil)
 		cancel()
 
 		if err != nil && !errors.Is(err, context.DeadlineExceeded) {
-			panic(err)
+			log.Printf("Receiving events failed due to the following reason: %s", err.Error())
+			os.Exit(1)
 		}
 
 		for _, event := range events {
@@ -151,6 +168,9 @@ func main() {
 				message = string(plaintext)
 			}
 			select {
+			case sig := <-signals:
+				log.Printf("Got signal: %v", sig)
+				return
 			case relayMessage <- message:
 			default:
 			}
@@ -162,24 +182,12 @@ func main() {
 			log.Printf("Got signal: %v", sig)
 			return
 		default:
-			log.Println("Have not reiceved signal yet. Continue processing..")
 		}
-
 	}
-
 }
 
 var datakey struct {
 	Key string `json:"key"`
-}
-
-func getEnv(envName string) string {
-	value := os.Getenv(envName)
-	if value == "" {
-		fmt.Println("Environment variable '" + envName + "' is missing")
-		os.Exit(1)
-	}
-	return value
 }
 
 func retrieveKey() (*rsa.PrivateKey, error) {

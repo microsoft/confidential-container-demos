@@ -1,0 +1,59 @@
+name: Cleanup All AKS Cluster in Resource Group 
+
+on:
+  workflow_call:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  remove-workload-and-cluster:
+    name: Clean Up
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log into Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Clean Up
+        id: cleanup
+        env: 
+          RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+        run: | 
+          result=$(az aks list -g $RESOURCE_GROUP --query "[].name" -o tsv)
+          for name in $result 
+          do
+              max_retries=5
+              retries=0
+              while [ $retries -lt $max_retries ]; do
+                  echo "Querying for cluster state"
+                  set -e
+                  EXIT_CODE=0
+                  clusterstate=$(az aks show -g $RESOURCE_GROUP -n $name --query 'provisioningState' -o tsv) || EXIT_CODE=$?
+                  if [[ $EXIT_CODE -eq 0 ]]; then
+                    # cluster still exists, try to delete
+                    if [[ $clusterstate == *"Succeeded"* ]]; then
+                        echo "Returned result is $clusterstate"
+                        echo "Cluster is ready to be deleted."
+                        az aks stop --resource-group $RESOURCE_GROUP --name $name 2>&1
+                        az aks delete --resource-group $RESOURCE_GROUP --name $name --no-wait --yes
+                    elif [[ $clusterstate == *"Stopped"* ]] || [[ $clusterstate == *"Failed"* ]]; then
+                        echo "Returned result is $clusterstate"
+                        az aks delete --resource-group $RESOURCE_GROUP --name $name --no-wait --yes
+                    else
+                        echo "Returned cluster provisioning state is $clusterstate"
+                        echo "Retrying in 3 minutes..."
+                    fi
+                    retries=$((retries+1))
+                    sleep 180
+                  else
+                    break # Exit the loop since the cluster no longer exists
+                  fi
+              done
+              if [ $retries -eq $max_retries ]; then
+                  echo "The operation has been tried 5 times without success."
+                  exit 1
+              fi
+          done
