@@ -93,6 +93,6 @@ jobs:
               fi
           done
           if [ $retries -eq $max_retries ]; then
-              echo "The operation has been tried 5 times without success."
+              echo "Attempted to delete 5 times without success."
               exit 1
           fi
