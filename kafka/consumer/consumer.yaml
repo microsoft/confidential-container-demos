@@ -26,7 +26,7 @@ spec:
       name: kafka-golang-consumer
       env:
         - name: SkrClientKID
-          value: kafka-demo-pipeline
+          value: $SkrClientKID
         - name: SkrClientMAAEndpoint
           value: $MAA_ENDPOINT
         - name: SkrClientAKVEndpoint
@@ -35,6 +35,8 @@ spec:
           value: $EVENTHUB_NAMESPACE
         - name: EVENTHUB
           value: $EVENTHUB
+        - name: LOG_FILE
+          value: $LOG_FILE
       command:
         - /consume
       ports:

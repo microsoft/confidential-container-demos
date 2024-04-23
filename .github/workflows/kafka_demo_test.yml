@@ -83,8 +83,9 @@ jobs:
         image: ["kafka/consumer", "kafka/producer"]
     with:
       image_tag: "private/${{ github.actor }}/acc/samples/${{ matrix.image }}:${{ github.sha }}"
-      docker_context: ${{ matrix.image }}
+      docker_context: ${{ '.' }}
       repo_type: private
+      dockerfile_path: "${{ matrix.image }}"
 
   create-aks-cluster:
     name: Create AKS Cluster
@@ -129,10 +130,13 @@ jobs:
 
   cleanup: 
     name: Clean Up
-    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
+    if: always() && needs.create-aks-cluster.result == 'success' && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
     uses: ./.github/workflows/_cleanup.yml
-    needs: [push_images, test-workload]
+    needs: [push_images, create-aks-cluster, deploy-kafka-test, test-workload]
     secrets: inherit
+    with: 
+      cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
+      skr-client-kid: ${{ needs.deploy-kafka-test.outputs.skr-client-kid }}
 
   
 

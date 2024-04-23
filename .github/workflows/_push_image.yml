@@ -15,6 +15,10 @@ on:
         description: "Docker Context to Use"
         required: true
         type: string
+      dockerfile_path:
+        description: "Docker File Path"
+        required: true
+        type: string
 
 jobs:
   push-example-image:
@@ -43,6 +47,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ${{ inputs.docker_context }}
-          file: ${{ inputs.docker_context }}/Dockerfile
+          file: ${{ inputs.dockerfile_path }}/Dockerfile
           push: true
           tags: ${{ inputs.repo_type == 'public' && secrets.AZURE_REGISTRY_URL || inputs.repo_type == 'private' && secrets.TEST_AZURE_REGISTRY_URL }}/${{ inputs.image_tag }}
