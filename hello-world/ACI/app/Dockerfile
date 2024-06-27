@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/base:dev-ubuntu-22.04 AS build
+FROM mcr.microsoft.com/devcontainers/base:dev-ubuntu-24.04 AS build
 ENV PROJECT_DIR=~/
 WORKDIR ${PROJECT_DIR}/confidential-container-demos
 COPY . ./
