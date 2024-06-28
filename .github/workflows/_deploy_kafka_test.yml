@@ -55,7 +55,7 @@ jobs:
         run: |
             echo "what is the event name? "
             echo ${{ github.event_name }}
-            az acr login --name ${{ secrets.AZURE_REGISTRY_NAME }}
+            az acr login --name accsamplesmcr
 
             
       - name: Install Dependencies 
