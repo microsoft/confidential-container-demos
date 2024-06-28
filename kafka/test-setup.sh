@@ -46,6 +46,7 @@ echo '{"claim":"x-ms-attestation-type", "equals":"sevsnpvm"},' >> ${policy_file_
 
 export EVENTHUB_NAMESPACE=kafka-demo-ehubns
 export EVENTHUB=kafka-demo-topic
+export CONSUMER_IMAGE="accsamplesmcr.azurecr.io/public/acc/samples/kafka/consumer:2.0"
 CONSUMER_IMAGE=$(echo $CONSUMER_IMAGE | sed 's/\//\\\//g')
 SIDECAR_IMAGE=$(echo $SIDECAR_IMAGE | sed 's/\//\\\//g')
 sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$SkrClientKID/'"$SkrClientKID"'/g; s/$LOG_FILE/'\"\"'/g; s/$MAA_ENDPOINT/'"$MAA_ENDPOINT"'/g; s/$AZURE_AKV_RESOURCE_ENDPOINT/'"$AZURE_AKV_RESOURCE_ENDPOINT"'/g; s/$CONSUMER_IMAGE/'"$CONSUMER_IMAGE"'/g; s/$SIDECAR_IMAGE/'"$SIDECAR_IMAGE"'/g' consumer/consumer.yaml

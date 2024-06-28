@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: 
       - main
+      - fix-kafka-demo-pipeline
     paths:
       - .github/workflows/**
       - kafka/**
