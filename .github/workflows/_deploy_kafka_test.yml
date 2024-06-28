@@ -51,7 +51,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Log in to Public Azure Container Registry
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'pull_request'
         run: az acr login --name ${{ secrets.AZURE_REGISTRY_NAME }}
 
             
