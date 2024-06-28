@@ -90,7 +90,7 @@ jobs:
           randomid=$(openssl rand -hex 8 | tr -d '\n')  
           export SkrClientKID=kafka-demo-pipeline-${randomid}
           bash test-setup.sh $SkrClientKID $AZURE_AKV_RESOURCE_ENDPOINT
-          echo "skr-client-kid=${SkrClientKID}" >> $GITHUB_OUTPUT
+          echo "skr-client-kid=${SkrClientKID}" >> $GITHUB_OUTPUT 
 
           
       
