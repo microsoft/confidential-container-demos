@@ -55,6 +55,7 @@ jobs:
         run: |
             echo "what is the event name? "
             echo ${{ github.event_name }}
+            echo "loggin into accsamplemcr"
             az acr login --name accsamplesmcr
 
             
