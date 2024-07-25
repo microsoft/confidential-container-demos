@@ -7,7 +7,7 @@ metadata:
   name: helloworld
 spec:
   containers:
-    - image: "mcr.microsoft.com/public/acc/samples/aks/helloworld:1.2"
+    - image: "mcr.microsoft.com/acc/samples/aks/helloworld:1.5"
       command:
         - python3.10
         - main.py
