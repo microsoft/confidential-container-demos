@@ -123,7 +123,7 @@ jobs:
     name: Test Workload 
     uses: ./.github/workflows/_test_workload.yml
     needs: [push_images, create-aks-cluster, deploy-kafka-test]
-    if: always() && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
+    if: always() && (needs.push_images.result == 'success')
     secrets: inherit 
     with: 
       cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
