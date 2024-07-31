@@ -20,6 +20,7 @@ on:
         options: 
           - mcr.microsoft.com
           - confidentialsidecars.azurecr.io
+          - accsamplesmcr.azurecr.io
       key-release-image:
         description: "The image of the SKR sidecar to use"
         required: true
