@@ -93,9 +93,9 @@ jobs:
           sudo mv ~/.docker/config.json /root/.docker/config.json
           echo "docker config.json looks like the following: "
           sudo cat /root/.docker/config.json
-          curl -LO https://github.com/microsoft/kata-containers/releases/download/3.2.0.azl1.genpolicy0/genpolicy
-          curl -LO https://github.com/microsoft/kata-containers/releases/download/3.2.0.azl1.genpolicy0/genpolicy-settings.json
-          curl -LO https://github.com/microsoft/kata-containers/releases/download/3.2.0.azl1.genpolicy0/rules.rego
+          curl -LO https://github.com/microsoft/kata-containers/releases/download/3.2.0.azl1.genpolicy0/genpolicy --fail-with-body
+          curl -LO https://github.com/microsoft/kata-containers/releases/download/3.2.0.azl1.genpolicy0/genpolicy-settings.json --fail-with-body
+          curl -LO https://github.com/microsoft/kata-containers/releases/download/3.2.0.azl1.genpolicy0/rules.rego --fail-with-body
           chmod +x genpolicy
           chmod +x genpolicy-settings.json
           chmod +x rules.rego
@@ -111,6 +111,8 @@ jobs:
           sudo systemctl restart containerd
           echo "Sleep for 60 Seconds"
           sleep 60
+          echo "Check to see whether containerd is running"
+          sudo systemctl is-active containerd
 
 
           chmod +x test-setup.sh
