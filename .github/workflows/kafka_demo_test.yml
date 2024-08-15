@@ -20,6 +20,7 @@ on:
         options: 
           - mcr.microsoft.com
           - confidentialsidecars.azurecr.io
+          - accsamplesmcr.azurecr.io
       key-release-image:
         description: "The image of the SKR sidecar to use"
         required: true
@@ -27,12 +28,12 @@ on:
         type: string
       consumer-image: 
         description: "Consumer Image"
-        default: "mcr.microsoft.com/acc/samples/kafka/consumer:2.0"
+        default: "public/acc/samples/kafka/consumer:2.0"
         required: true
         type: string
       producer-image: 
         description: "Producer Image"
-        default: "mcr.microsoft.com/acc/samples/kafka/producer:2.0"
+        default: "public/acc/samples/kafka/consumer:2.0"
         required: true
         type: string
   merge_group:
@@ -130,7 +131,7 @@ jobs:
 
   cleanup: 
     name: Clean Up
-    if: always() && needs.create-aks-cluster.result == 'success' && (needs.push_images.result == 'success' || needs.push_images.result == 'skipped')
+    if: always() && needs.create-aks-cluster.result == 'success' && needs.push_images.result == 'success'
     uses: ./.github/workflows/_cleanup.yml
     needs: [push_images, create-aks-cluster, deploy-kafka-test, test-workload]
     secrets: inherit

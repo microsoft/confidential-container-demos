@@ -88,6 +88,33 @@ jobs:
         run: | 
           az aks get-credentials --name $CLUSTER_NAME --resource-group $RESOURCE_GROUP  --overwrite-existing
           cd main/kafka
+
+          sudo cat /root/.docker/config.json 
+          sudo mv ~/.docker/config.json /root/.docker/config.json
+          echo "docker config.json looks like the following: "
+          sudo cat /root/.docker/config.json
+          curl -LO https://github.com/microsoft/kata-containers/releases/download/3.2.0.azl1.genpolicy0/genpolicy --fail-with-body
+          curl -LO https://github.com/microsoft/kata-containers/releases/download/3.2.0.azl1.genpolicy0/genpolicy-settings.json --fail-with-body
+          curl -LO https://github.com/microsoft/kata-containers/releases/download/3.2.0.azl1.genpolicy0/rules.rego --fail-with-body
+          chmod +x genpolicy
+          chmod +x genpolicy-settings.json
+          chmod +x rules.rego
+          echo "Containerd Status"
+          systemctl status containerd
+          echo "Check toml File Status" 
+          sudo cat /etc/containerd/config.toml
+          echo "Repalce toml File Content"
+          sudo sed -i 's/disabled_plugins = \["cri"\]/disabled_plugins = \[\]/' /etc/containerd/config.toml
+          echo "Check toml File Status Again" 
+          sudo cat /etc/containerd/config.toml
+          echo "Restart Containerd"
+          sudo systemctl restart containerd
+          echo "Sleep for 60 Seconds"
+          sleep 60
+          echo "Check to see whether containerd is running"
+          sudo systemctl is-active containerd
+
+
           chmod +x test-setup.sh
           randomid=$(openssl rand -hex 8 | tr -d '\n')  
           export SkrClientKID=kafka-demo-pipeline-${randomid}
