@@ -19,14 +19,6 @@ on:
         description: "Producer Image"
         required: true
         type: string
-      repo-type:
-        description: "Azure Container Registry to push the image to"
-        required: true
-        type: string
-      workflow-id:
-        description: "Workflow ID"
-        required: true
-        type: string
     outputs:
       skr-client-kid:
         description: SKR key id
