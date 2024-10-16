@@ -4,7 +4,7 @@ WORKDIR ${PROJECT_DIR}/confidential-container-demos
 COPY . ./
 RUN chmod +x hello-world/get_verbose_report.sh && ./hello-world/get_verbose_report.sh
 
-FROM mcr.microsoft.com/cbl-mariner/base/python:3.9
+FROM mcr.microsoft.com/azurelinux/base/python:3.12
 RUN pip install flask --no-cache-dir
 
 # all commands start from this directory

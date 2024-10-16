@@ -4,7 +4,7 @@ WORKDIR ${PROJECT_DIR}/confidential-container-demos
 COPY . ./
 RUN chmod +x hello-world/get_verbose_report.sh && ./hello-world/get_verbose_report.sh
 
-FROM mcr.microsoft.com/cbl-mariner/base/python:3.9
+FROM mcr.microsoft.com/azurelinux/base/python:3.12
 RUN tdnf update -y && tdnf -y upgrade && tdnf -y install nginx && tdnf clean all
 
 WORKDIR /app
