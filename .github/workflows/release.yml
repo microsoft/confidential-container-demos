@@ -63,7 +63,8 @@ jobs:
     uses: ./.github/workflows/_push_image.yml
     secrets: inherit
     with:
-      image_tag: ${{ needs.parse_tag.outputs.repo_type }}/${{ github.actor }}/acc/samples/${{ needs.parse_tag.outputs.image }}:${{ needs.parse_tag.outputs.image_tag }}
+      image: ${{ needs.parse_tag.outputs.repo_type }}/${{ github.actor }}/acc/samples/${{ needs.parse_tag.outputs.image }}
+      tag: ${{ needs.parse_tag.outputs.image_tag }}
       docker_context: ${{ fromJson(needs.get_docker_context.outputs.docker_context) }}
       repo_type: ${{ needs.parse_tag.outputs.repo_type }}
 

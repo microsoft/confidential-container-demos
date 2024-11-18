@@ -7,7 +7,11 @@ on:
         description: "Azure Container Registry to push the image to"
         required: true
         type: string
-      image_tag:
+      image:
+        description: "Image to push"
+        required: true
+        type: string
+      tag:
         description: "Tag to push the image with"
         required: true
         type: string
@@ -20,13 +24,25 @@ on:
         required: true
         type: string
 
+permissions:
+  id-token: write
+  contents: read
+  attestations: write
+  packages: write
+
 jobs:
   push-example-image:
-    name: Push Image (${{ inputs.image_tag }})
+    name: Push Image (${{ inputs.image }})
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # needed to avoid a bug where imageId and digest output are the same
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          version: v0.8.2
 
       - name: Log into Azure
         uses: azure/login@v2
@@ -45,8 +61,16 @@ jobs:
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
+        id: build-image
         with:
           context: ${{ inputs.docker_context }}
           file: ${{ inputs.dockerfile_path }}/Dockerfile
           push: true
-          tags: ${{ inputs.repo_type == 'public' && secrets.AZURE_REGISTRY_URL || inputs.repo_type == 'private' && secrets.TEST_AZURE_REGISTRY_URL }}/${{ inputs.image_tag }}
+          tags: ${{ inputs.repo_type == 'public' && secrets.AZURE_REGISTRY_URL || inputs.repo_type == 'private' && secrets.TEST_AZURE_REGISTRY_URL }}/${{ inputs.image }}:${{inputs.tag}}
+
+      - name: Generate Artifact Attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ inputs.repo_type == 'public' && secrets.AZURE_REGISTRY_URL || inputs.repo_type == 'private' && secrets.TEST_AZURE_REGISTRY_URL }}/${{ inputs.image }}
+          subject-digest: 'sha256:${{steps.build-image.outputs.digest}}'
+          push-to-registry: true

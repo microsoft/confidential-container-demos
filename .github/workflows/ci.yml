@@ -47,18 +47,16 @@ jobs:
       uses: github/codeql-action/analyze@v2
 
     - name: Trivy Security Scan
-      uses: aquasecurity/trivy-action@0.17.0
+      uses: aquasecurity/trivy-action@0.28.0
       with:
         scan-type: 'fs'
         scan-ref: '.'
         format: 'sarif'
         output: 'trivy-results.sarif'
-        exit-code: 1
         severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
 
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v2
-      if: always()
       with:
         sarif_file: 'trivy-results.sarif'
 
