@@ -41,11 +41,33 @@ jobs:
 
       - name: Check Curl Results
         run: |
-          echo "Running curl test on $SERVICE_IP:80"
-          TEST_RESPONSE=$(curl -s $SERVICE_IP:80)
-          if [[ ! $TEST_RESPONSE =~ "Confidential Pods on Azure Kubernetes Service!" ]]; then
-              echo "Curl did not return expected result"
-              echo $TEST_RESPONSE
-              exit 1
-          fi
+          echo "Wait for pod readiness before checking expected message."
+          kubectl wait --for=condition=ready pod/helloworld --timeout=180s || {
+            echo "Pod is not ready within the acceptable time range. Printing out kubectl describe output."
+            echo $(kubectl describe pod helloworld)
+            exit 1 
+          }
 
+          max_retries=5
+          retries=0
+          while [ $retries -lt $max_retries ]; do
+              echo "Running curl test on $SERVICE_IP:80"
+              TEST_RESPONSE=$(curl -s $SERVICE_IP:80)
+
+              if [[ ! $TEST_RESPONSE =~ "Confidential Pods on Azure Kubernetes Service!" ]]; then
+                  echo "Curl did not return expected result"
+                  echo $TEST_RESPONSE
+                  echo "Returned result does not contain text that indicates successful execution, retrying in 5 seconds..."
+                  retries=$((retries+1))
+              else
+                  echo "Returned result contains text that indicates successful execution."
+                  echo "Returned result is $result"
+                  break  # Exit the loop on successful attempt
+              fi
+              sleep 5
+          done
+
+          if [ $retries -eq $max_retries ]; then
+            echo "The operation has been tried 3 times without success."
+            exit 1
+          fi
