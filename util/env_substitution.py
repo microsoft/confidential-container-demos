@@ -21,7 +21,6 @@ def parse_yaml(file: str):
     with open(file, "r+") as f:
         data = yaml.safe_load_all(f)
         for doc in data:
-            doc["metadata"]["name"] = f'helloworld-aks-{os.environ["WORKFLOW_ID"]}'
             doc["spec"]["containers"][0]["image"] = os.environ["HELLO_WORLD_IMAGE"]
             break
         # write yaml back to file

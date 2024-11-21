@@ -67,8 +67,6 @@ jobs:
 
       - name: Substitute Environment Variables
         id: substitute-envs
-        env: 
-          WORKFLOW_ID: ${{ inputs.workflow-id }}
         run: |
             python util/env_substitution.py --file hello-world/AKS/helloworld.yaml --file-type yaml
 

@@ -42,9 +42,9 @@ jobs:
       - name: Check Curl Results
         run: |
           echo "Wait for pod readiness before checking expected message."
-          kubectl wait --for=condition=ready pod/helloworld-aks-$WORKFLOW_ID --timeout=180s || {
+          kubectl wait --for=condition=ready pod/helloworld --timeout=180s || {
             echo "Pod is not ready within the acceptable time range. Printing out kubectl describe output."
-            echo $(kubectl describe pod helloworld-aks-$WORKFLOW_ID)
+            echo $(kubectl describe pod helloworld)
             exit 1 
           }
 
