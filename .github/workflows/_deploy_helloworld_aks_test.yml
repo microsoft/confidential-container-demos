@@ -80,5 +80,6 @@ jobs:
           cd hello-world/AKS
           az confcom katapolicygen -y helloworld.yaml
           kubectl apply -f helloworld.yaml
+          kubectl apply -f service.yaml
           # give time for the service to be running
           sleep 30
