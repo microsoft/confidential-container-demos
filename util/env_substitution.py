@@ -19,13 +19,11 @@ def parse_json(file: str):
 
 def parse_yaml(file: str):
     with open(file, "r+") as f:
-        data = yaml.safe_load_all(f)
-        for doc in data:
-            doc["spec"]["containers"][0]["image"] = os.environ["HELLO_WORLD_IMAGE"]
-            break
+        data = yaml.safe_load(f)
+        data["spec"]["containers"][0]["image"] = os.environ["HELLO_WORLD_IMAGE"]
         # write yaml back to file
         f.seek(0)
-        yaml.dump_all(data, f)
+        yaml.dump(data, f)
         f.truncate()
 
 
