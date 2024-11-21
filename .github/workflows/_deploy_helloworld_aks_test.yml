@@ -104,7 +104,7 @@ jobs:
           echo "Check to see whether containerd is running"
           sudo systemctl is-active containerd
 
-          az confcom katapolicygen -y helloworld.yaml
+          sudo $(pwd)/genpolicy -y helloworld.yaml -p $(pwd)/rules.rego -j $(pwd)/genpolicy-settings.json -d
           kubectl apply -f helloworld.yaml
           kubectl apply -f service.yaml
           # give time for the service to be running
