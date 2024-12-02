@@ -3,6 +3,10 @@ name: Create AKS Cluster
 on:
   workflow_call:
     inputs:
+      demo-name:
+        description: "Demo Name"
+        required: true
+        type: string
       workflow-id:
         description: "Workflow ID"
         required: true
@@ -53,10 +57,10 @@ jobs:
         id: create-aks-cluster
         if: steps.install-dependencies.outcome == 'success'
         env: 
-          RUN_ID: ${{ inputs.workflow-id }}
+          CLUSTER_NAME: ${{ inputs.demo-name }}-${{ inputs.workflow-id }}
         run: |
           az aks create --resource-group $RESOURCE_GROUP \
-          --name kafka-${RUN_ID} \
+          --name ${CLUSTER_NAME} \
           --os-sku AzureLinux \
           --node-vm-size Standard_DC4as_cc_v5 \
           --tags "Owner=accct" \
@@ -65,4 +69,4 @@ jobs:
           --workload-runtime KataCcIsolation \
           --node-count 1 \
           --generate-ssh-keys
-          echo "cluster-name=kafka-${RUN_ID}" >> $GITHUB_OUTPUT
+          echo "cluster-name=${CLUSTER_NAME}" >> $GITHUB_OUTPUT
