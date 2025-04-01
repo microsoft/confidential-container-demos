@@ -5,7 +5,7 @@
 
 module github.com/microsoft/confidential-container-demos/kafka/consumer
 
-go 1.24
+go 1.24.1
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.1
@@ -14,7 +14,7 @@ require (
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.0 // indirect
 	github.com/Azure/go-amqp v1.4.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.4.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect

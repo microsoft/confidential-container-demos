@@ -16,6 +16,8 @@ github.com/Azure/azure-sdk-for-go/sdk/internal v1.9.0 h1:H+U3Gk9zY56G3u872L82bk4
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.9.0/go.mod h1:mgrmMSgaLp9hmax62XQTd0N4aAqSE5E0DulSpVYK7vc=
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 h1:ywEEhmNahHBihViHepv3xPBn1663uRv2t2q/ESv9seY=
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0/go.mod h1:iZDifYGJTIgIIkYRNWPENUnqx6bJ2xnSDFI2tjwZNuY=
+github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.0 h1:Bg8m3nq/X1DeePkAbCfb6ml6F3F0IunEhE8TMh+lY48=
+github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.0/go.mod h1:j2chePtV91HrC22tGoRX3sGY42uF13WzmmV80/OdVAA=
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.1.0 h1:vEe09cdSBy7evqoVUvuitnsjyozsSzI4TbGgwu01+TI=
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.1.0/go.mod h1:PgOlzIlvwIagKI8N6hCsfFDpAijHCmlHqOwA5GsSh9w=
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.2.1 h1:0f6XnzroY1yCQQwxGf/n/2xlaBF02Qhof2as99dGNsY=
