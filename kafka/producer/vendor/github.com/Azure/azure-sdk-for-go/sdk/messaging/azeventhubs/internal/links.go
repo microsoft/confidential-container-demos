@@ -21,7 +21,10 @@ type AMQPLink interface {
 // LinksForPartitionClient are the functions that the PartitionClient uses within Links[T]
 // (for unit testing only)
 type LinksForPartitionClient[LinkT AMQPLink] interface {
+	// Retry is [Links.Retry]
 	Retry(ctx context.Context, eventName azlog.Event, operation string, partitionID string, retryOptions exported.RetryOptions, fn func(ctx context.Context, lwid LinkWithID[LinkT]) error) error
+
+	// Close is [Links.Close]
 	Close(ctx context.Context) error
 }
 
@@ -362,11 +365,19 @@ func (ls *linkState[LinkT]) Close(ctx context.Context) error {
 		ls.cancelAuth()
 	}
 
+	var linkCloseErr error
+
 	if ls.link != nil {
-		return ls.Link().Close(ctx)
+		// we're more interested in a link failing to close than we are in
+		// the session.
+		linkCloseErr = ls.Link().Close(ctx)
 	}
 
-	return nil
+	if ls.session != nil {
+		_ = ls.session.Close(ctx)
+	}
+
+	return linkCloseErr
 }
 
 func (ls *linkState[LinkT]) PartitionID() string {
