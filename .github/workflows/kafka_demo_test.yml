@@ -24,7 +24,7 @@ on:
       key-release-image:
         description: "The image of the SKR sidecar to use"
         required: true
-        default: "aci/skr:2.7"
+        default: "aci/skr:2.9"
         type: string
       consumer-image: 
         description: "Consumer Image"
@@ -33,7 +33,7 @@ on:
         type: string
       producer-image: 
         description: "Producer Image"
-        default: "public/acc/samples/kafka/consumer:2.0"
+        default: "public/acc/samples/kafka/producer:2.0"
         required: true
         type: string
   merge_group:

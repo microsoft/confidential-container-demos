@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-FROM golang:1.22.2 as builder
+FROM mcr.microsoft.com/oss/go/microsoft/golang:1.24.1-fips-azurelinux3.0 as builder
 ARG PROJECT_DIR=/go/src/github.com/microsoft
 WORKDIR ${PROJECT_DIR}/confidential-container-demos
 COPY /kafka/producer ./kafka/producer
