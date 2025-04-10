@@ -131,16 +131,13 @@ jobs:
     with: 
       cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
 
-  cleanup: 
-    name: Clean Up
-    if: always() && needs.create-aks-cluster.result == 'success' && needs.push_images.result == 'success'
-    uses: ./.github/workflows/_cleanup.yml
-    needs: [push_images, create-aks-cluster, deploy-kafka-test, test-workload]
-    secrets: inherit
-    with: 
-      cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
-      skr-client-kid: ${{ needs.deploy-kafka-test.outputs.skr-client-kid }}
-      test-name: kafka
-
-  
-
+  # cleanup: 
+  #   name: Clean Up
+  #   if: always() && needs.create-aks-cluster.result == 'success' && needs.push_images.result == 'success'
+  #   uses: ./.github/workflows/_cleanup.yml
+  #   needs: [push_images, create-aks-cluster, deploy-kafka-test, test-workload]
+  #   secrets: inherit
+  #   with: 
+  #     cluster-name: ${{ needs.create-aks-cluster.outputs.cluster-name }}
+  #     skr-client-kid: ${{ needs.deploy-kafka-test.outputs.skr-client-kid }}
+  #     test-name: kafka
