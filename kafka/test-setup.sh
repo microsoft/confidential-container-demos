@@ -51,6 +51,10 @@ SIDECAR_IMAGE=$(echo $SIDECAR_IMAGE | sed 's/\//\\\//g')
 sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$SkrClientKID/'"$SkrClientKID"'/g; s/$LOG_FILE/'\"\"'/g; s/$MAA_ENDPOINT/'"$MAA_ENDPOINT"'/g; s/$AZURE_AKV_RESOURCE_ENDPOINT/'"$AZURE_AKV_RESOURCE_ENDPOINT"'/g; s/$CONSUMER_IMAGE/'"$CONSUMER_IMAGE"'/g; s/$SIDECAR_IMAGE/'"$SIDECAR_IMAGE"'/g' consumer/consumer.yaml
 echo "Generating Security Policy for consumer"
 
+# Inject the security policy into the consumer.yaml
+az confcom katapolicygen -y consumer/consumer.yaml
+
+# Generate the workload measurement
 export WORKLOAD_MEASUREMENT=$(az confcom katapolicygen -y consumer/consumer.yaml --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
 cat consumer/consumer.yaml
 if [[ -z "${WORKLOAD_MEASUREMENT}" ]]; then
