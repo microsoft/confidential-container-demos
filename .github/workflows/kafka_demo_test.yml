@@ -24,7 +24,7 @@ on:
       key-release-image:
         description: "The image of the SKR sidecar to use"
         required: true
-        default: "aci/skr:2.9"
+        default: "fishersnpregistry.azurecr.io/skr-test:1.0"
         type: string
       consumer-image: 
         description: "Consumer Image"
