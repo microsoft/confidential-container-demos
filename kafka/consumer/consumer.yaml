@@ -16,6 +16,8 @@ spec:
       env:
         - name: SkrSideCarArgs
           value: ewogICAgImNlcnRjYWNoZSI6IHsKCQkiZW5kcG9pbnRfdHlwZSI6ICJMb2NhbFRISU0iLAoJCSJlbmRwb2ludCI6ICIxNjkuMjU0LjE2OS4yNTQvbWV0YWRhdGEvVEhJTS9hbWQvY2VydGlmaWNhdGlvbiIKCX0gIAp9
+        - name: LogLevel
+          value: debug
       command:
         - tdnf install ca-certificates && /skr.sh
       volumeMounts:
