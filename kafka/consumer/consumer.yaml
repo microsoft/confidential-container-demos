@@ -17,7 +17,7 @@ spec:
         - name: SkrSideCarArgs
           value: ewogICAgImNlcnRjYWNoZSI6IHsKCQkiZW5kcG9pbnRfdHlwZSI6ICJMb2NhbFRISU0iLAoJCSJlbmRwb2ludCI6ICIxNjkuMjU0LjE2OS4yNTQvbWV0YWRhdGEvVEhJTS9hbWQvY2VydGlmaWNhdGlvbiIKCX0gIAp9
       command:
-        - /skr.sh
+        - tdnf install ca-certificates && /skr.sh
       volumeMounts:
         - mountPath: /opt/confidential-containers/share/kata-containers/reference-info-base64
           name: endor-loc
