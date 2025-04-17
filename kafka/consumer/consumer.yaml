@@ -10,7 +10,7 @@ spec:
   serviceAccountName: workload-identity-sa
   runtimeClassName: kata-cc-isolation
   containers:
-    - image: fishersnpregistry.azurecr.io/skr-test:2.0
+    - image: $SIDECAR_IMAGE
       imagePullPolicy: Always
       name: skr
       env:
