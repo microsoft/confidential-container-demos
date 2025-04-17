@@ -133,6 +133,11 @@ func main() {
 		}
 	}()
 
+	err = getStatus()
+	if err != nil {
+		log.Printf("Unable to get status: %s", err.Error())
+	}
+
 	key, err := retrieveKey()
 	if err != nil {
 		log.Printf("Unable to retrieve key: %s", err.Error())
@@ -188,6 +193,33 @@ func main() {
 
 var datakey struct {
 	Key string `json:"key"`
+}
+
+func getStatus() error {
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", "http://localhost:8080/status", nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	var bodyText []byte
+	if resp != nil && resp.Body != nil {
+		limitSize := resp.ContentLength
+		const mb134 = 1 << 27 //134MB
+		if limitSize < 1 || limitSize > mb134 {
+			limitSize = mb134
+		}
+		bodyText, _ = io.ReadAll(io.LimitReader(resp.Body, int64(limitSize)))
+		resp.Body.Close()
+	}
+	if err != nil {
+		log.Printf("Error response body from SKR: %s", bodyText)
+		return err
+	}
+
+	return nil
+
 }
 
 func retrieveKey() (*rsa.PrivateKey, error) {
