@@ -51,10 +51,9 @@ SIDECAR_IMAGE=$(echo $SIDECAR_IMAGE | sed 's/\//\\\//g')
 sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB"'/g; s/$SkrClientKID/'"$SkrClientKID"'/g; s/$LOG_FILE/'\"\"'/g; s/$MAA_ENDPOINT/'"$MAA_ENDPOINT"'/g; s/$AZURE_AKV_RESOURCE_ENDPOINT/'"$AZURE_AKV_RESOURCE_ENDPOINT"'/g; s/$CONSUMER_IMAGE/'"$CONSUMER_IMAGE"'/g; s/$SIDECAR_IMAGE/'"$SIDECAR_IMAGE"'/g' consumer/consumer.yaml
 echo "Generating Security Policy for consumer"
 
-
-#export WORKLOAD_MEASUREMENT=$(az confcom katapolicygen -y consumer/consumer.yaml --print-policy | base64 --decode | sha256sum | cut -d' ' -f1)
-# This is a workaround before confcom extension picks up the Genpolicy new release where it introduces the -d flag
-export WORKLOAD_MEASUREMENT=$(sudo $(pwd)/genpolicy -y consumer/consumer.yaml -p $(pwd)/rules.rego -j $(pwd)/genpolicy-settings.json -d --raw-out | sha256sum | cut -d' ' -f1)
+az confcom katapolicygen -y consumer/consumer.yaml
+UPDATED_POLICY_BASE64=$(python update-yaml.py --file consumer/consumer.yaml)
+export WORKLOAD_MEASUREMENT=$(echo "$UPDATED_POLICY_BASE64" | base64 --decode | sha256sum | cut -d' ' -f1)
 cat consumer/consumer.yaml
 if [[ -z "${WORKLOAD_MEASUREMENT}" ]]; then
 	echo "Warning: Env WORKLOAD_MEASUREMENT is not set. Set this to condition releasing your key on your security policy matching the expected value.  Recommended for production workloads."
@@ -62,9 +61,9 @@ else
 	echo {\"claim\":\"x-ms-sevsnpvm-hostdata\", \"equals\":\"${WORKLOAD_MEASUREMENT}\"}, >> ${policy_file_name}
 fi
 
-
 echo {\"claim\":\"x-ms-compliance-status\", \"equals\":\"azure-signed-katacc-uvm\"}, >> ${policy_file_name}
 echo {\"claim\":\"x-ms-sevsnpvm-is-debuggable\", \"equals\":\"false\"}, >> ${policy_file_name}
+echo {\"claim\": \"x-ms-sevsnpvm-vmpl\", \"equals\": \"0\"}, >> ${policy_file_name}
 
 echo '] } ], "version":"1.0.0" }' >> ${policy_file_name}
 echo "......Generated key release policy ${policy_file_name}"

@@ -18,9 +18,10 @@ Run `docker build -t <image-name:tag> .` from the same directory as the Dockerfi
 
 ```az confcom katapolicygen -y helloworld.yaml```
 
-### Run kubectl apply on the updated yaml file
+### Run kubectl apply on the updated yaml file and the service yaml file
 
 ```kubectl apply -f helloworld.yaml```
+```kubectl apply -f service.yaml```
 
 ### Get the external IP of the LoadBalancer service
 
