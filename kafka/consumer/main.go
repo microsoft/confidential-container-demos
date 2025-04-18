@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"math/big"
 	"net/http"
 	"os"
@@ -35,6 +36,12 @@ var keyEnabled bool
 
 const eventHubNamespace = "EVENTHUB_NAMESPACE"
 const eventHub = "EVENTHUB"
+
+const (
+	maxRetries     = 5
+	initialBackoff = 1 * time.Second
+	maxBackoff     = 30 * time.Second
+)
 
 var logLocation = util.GetEnv("LOG_FILE")
 
@@ -195,69 +202,118 @@ var datakey struct {
 	Key string `json:"key"`
 }
 
-func getStatus() error {
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", "http://127.0.0.1:8080/status", nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	var bodyText []byte
-	if resp != nil && resp.Body != nil {
-		limitSize := resp.ContentLength
-		const mb134 = 1 << 27 //134MB
-		if limitSize < 1 || limitSize > mb134 {
-			limitSize = mb134
+func WithRetry(operation func() error) error {
+	backoff := initialBackoff
+	var lastErr error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err := operation()
+		if err == nil {
+			return nil // success on this attempt
 		}
-		bodyText, _ = io.ReadAll(io.LimitReader(resp.Body, int64(limitSize)))
-		resp.Body.Close()
-	}
-	if err != nil {
-		log.Printf("Error response body from SKR: %s", bodyText)
-		return err
+		lastErr = err // capture for final return if out of tries
+
+		if attempt == maxRetries {
+			break // no more attempts
+		}
+
+		log.Printf("[WithRetry] attempt %d/%d failed (%v). Retrying in %s...",
+			attempt, maxRetries, err, backoff)
+
+		time.Sleep(backoff)
+		// exponential growth with clamp
+		backoff = time.Duration(math.Min(float64(backoff*2), float64(maxBackoff)))
 	}
 
-	return nil
+	return fmt.Errorf("operation failed after %d retries: %w", maxRetries, lastErr)
+}
 
+func getStatus() error {
+	operation := func() error {
+		client := &http.Client{}
+		req, err := http.NewRequest("POST", "http://localhost:8080/status", nil)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := client.Do(req)
+		var bodyText []byte
+		if resp != nil && resp.Body != nil {
+			limitSize := resp.ContentLength
+			const mb134 = 1 << 27 //134MB
+			if limitSize < 1 || limitSize > mb134 {
+				limitSize = mb134
+			}
+			bodyText, _ = io.ReadAll(io.LimitReader(resp.Body, int64(limitSize)))
+			resp.Body.Close()
+		}
+
+		if err != nil {
+			log.Printf("Error response body from SKR: %s", bodyText)
+			return err
+		}
+
+		if resp.StatusCode < 200 || resp.StatusCode > 207 {
+			return fmt.Errorf("status code not 2xx: %d. Body: %s",
+				resp.StatusCode, string(bodyText))
+		}
+
+		return nil
+	}
+
+	return WithRetry(operation)
 }
 
 func retrieveKey() (*rsa.PrivateKey, error) {
-	client := &http.Client{}
-	var data = strings.NewReader("{\"maa_endpoint\": \"" + os.Getenv("SkrClientMAAEndpoint") + "\", \"akv_endpoint\": \"" + os.Getenv("SkrClientAKVEndpoint") + "\", \"kid\": \"" + os.Getenv("SkrClientKID") + "\"}")
-	req, err := http.NewRequest("POST", "http://localhost:8080/key/release", data)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	var bodyText []byte
-	if resp != nil && resp.Body != nil {
-		limitSize := resp.ContentLength
-		const mb134 = 1 << 27 //134MB
-		if limitSize < 1 || limitSize > mb134 {
-			limitSize = mb134
+	var key *rsa.PrivateKey
+
+	operation := func() error {
+		client := &http.Client{}
+		var data = strings.NewReader("{\"maa_endpoint\": \"" + os.Getenv("SkrClientMAAEndpoint") + "\", \"akv_endpoint\": \"" + os.Getenv("SkrClientAKVEndpoint") + "\", \"kid\": \"" + os.Getenv("SkrClientKID") + "\"}")
+		req, err := http.NewRequest("POST", "http://localhost:8080/key/release", data)
+		if err != nil {
+			return err
 		}
-		bodyText, _ = io.ReadAll(io.LimitReader(resp.Body, int64(limitSize)))
-		resp.Body.Close()
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := client.Do(req)
+		var bodyText []byte
+		if resp != nil && resp.Body != nil {
+			limitSize := resp.ContentLength
+			const mb134 = 1 << 27 //134MB
+			if limitSize < 1 || limitSize > mb134 {
+				limitSize = mb134
+			}
+			bodyText, _ = io.ReadAll(io.LimitReader(resp.Body, int64(limitSize)))
+			resp.Body.Close()
+		}
+
+		if err != nil {
+			log.Printf("Error response body from SKR: %s", bodyText)
+			return err
+		}
+		if resp.StatusCode < 200 || resp.StatusCode > 207 {
+			return fmt.Errorf("unable to retrieve key from SKR.  Response Code %d.  Message %s", resp.StatusCode, string(bodyText))
+		}
+
+		if err := json.Unmarshal(bodyText, &datakey); err != nil {
+			log.Printf("retrieve key unmarshal error: %s", err.Error())
+			return err
+		}
+
+		k, err := RSAPrivateKeyFromJWK([]byte(datakey.Key))
+		if err != nil {
+			log.Printf("construct private rsa key from jwk key error: %s", err.Error())
+			return err
+		}
+
+		key = k
+		keyEnabled = true
+		return nil
 	}
-	if err != nil {
-		log.Printf("Error response body from SKR: %s", bodyText)
+
+	if err := WithRetry(operation); err != nil {
 		return nil, err
 	}
-	if resp.StatusCode < 200 || resp.StatusCode > 207 {
-		return nil, fmt.Errorf("unable to retrieve key from SKR.  Response Code %d.  Message %s", resp.StatusCode, string(bodyText))
-	}
-
-	if err := json.Unmarshal(bodyText, &datakey); err != nil {
-		log.Printf("retrieve key unmarshal error: %s", err.Error())
-	}
-
-	key, err := RSAPrivateKeyFromJWK([]byte(datakey.Key))
-	if err != nil {
-		log.Printf("construct private rsa key from jwk key error: %s", err.Error())
-	}
-	keyEnabled = true
 
 	return key, nil
 
