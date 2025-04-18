@@ -197,7 +197,7 @@ var datakey struct {
 
 func getStatus() error {
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", "http://localhost:8080/status", nil)
+	req, err := http.NewRequest("POST", ":8080/status", nil)
 	if err != nil {
 		return err
 	}
