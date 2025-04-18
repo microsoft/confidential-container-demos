@@ -52,7 +52,7 @@ sed -i 's/$EVENTHUB_NAMESPACE/'"$EVENTHUB_NAMESPACE"'/g; s/$EVENTHUB/'"$EVENTHUB
 echo "Generating Security Policy for consumer"
 
 az confcom katapolicygen -y consumer/consumer.yaml
-UPDATED_POLICY_BASE64=$(python update_yaml.py --file consumer/consumer.yaml)
+UPDATED_POLICY_BASE64=$(python update-yaml.py --file consumer/consumer.yaml)
 export WORKLOAD_MEASUREMENT=$(echo "$UPDATED_POLICY_BASE64" | base64 --decode | sha256sum | cut -d' ' -f1)
 cat consumer/consumer.yaml
 if [[ -z "${WORKLOAD_MEASUREMENT}" ]]; then
