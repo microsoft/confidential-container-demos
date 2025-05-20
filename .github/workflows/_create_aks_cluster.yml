@@ -64,5 +64,8 @@ jobs:
           --enable-workload-identity \
           --workload-runtime KataCcIsolation \
           --node-count 1 \
-          --generate-ssh-keys
+          --generate-ssh-keys \
+          --auto-upgrade-channel patch \
+          --node-os-upgrade-channel NodeImage
+
           echo "cluster-name=kafka-${RUN_ID}" >> $GITHUB_OUTPUT
