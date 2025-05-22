@@ -6,7 +6,7 @@ This sample is a basic Python application used to demonstrate Confidential Pods 
 
 ![Hello World Hardware Report](./media/hello-world-cc.png)
 
-The container is hosted publicly on [Azure Container Registry](fishersnpregistry.azurecr.io/hello-world-aks:1.0).
+The container is hosted publicly on [Azure Container Registry](mcr.microsoft.com/acc/samples/aks/helloworld:1.7).
 
 ## Getting Started
 
@@ -18,9 +18,10 @@ Run `docker build -t <image-name:tag> .` from the same directory as the Dockerfi
 
 ```az confcom katapolicygen -y helloworld.yaml```
 
-### Run kubectl apply on the updated yaml file
+### Run kubectl apply on the updated yaml file and the service yaml file
 
 ```kubectl apply -f helloworld.yaml```
+```kubectl apply -f service.yaml```
 
 ### Get the external IP of the LoadBalancer service
 

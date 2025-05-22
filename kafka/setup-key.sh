@@ -20,7 +20,7 @@ https="https://"
 http="http://"
 KEY_NAME=$1
 
-# if https://, http:// and trailing / exists, remove them from url 
+# if https://, http:// and trailing / exists, remove them from url
 AZURE_AKV_RESOURCE_ENDPOINT=${2#$https}
 AZURE_AKV_RESOURCE_ENDPOINT=${AZURE_AKV_RESOURCE_ENDPOINT#$http}
 AZURE_AKV_RESOURCE_ENDPOINT=${AZURE_AKV_RESOURCE_ENDPOINT%%/*}
