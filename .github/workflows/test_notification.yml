@@ -1,0 +1,48 @@
+name: Kafka Demo Test 
+
+on:
+  push:
+    branches: 
+      - test-notification
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
+  
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Echo
+        run: echo "This is a test notification workflow"
+
+    #   - name: Authenticate with Microsoft Entra ID
+        # id: auth
+        # uses: azure/login@v1
+        # with: 
+        #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        
+#       - name: Send email via Microsoft Graph
+#         if: failure()
+#         run: |
+#           curl -X POST https://graph.microsoft.com/v1.0/users/${{ secrets.SENDER_EMAIL }}/sendMail \
+#             -H "Authorization: Bearer ${{ steps.token.outputs.access_token }}" \
+#             -H "Content-Type: application/json" \
+#             -d '{
+#               "message": {
+#                 "subject": "🚨 GitHub Workflow Failed",
+#                 "body": {
+#                   "contentType": "Text",
+#                   "content": "The GitHub Actions workflow has failed. Please check the logs for details."
+#                 },
+#                 "toRecipients": [
+#                   {
+#                     "emailAddress": {
+#                       "address": "'"${{ secrets.RECIPIENT_EMAIL }}"'"
+#                     }
+#                   }
