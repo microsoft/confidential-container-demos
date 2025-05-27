@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-FROM mcr.microsoft.com/oss/go/microsoft/golang:1.24.1 AS builder
+FROM mcr.microsoft.com/oss/go/microsoft/golang:1.24.3 AS builder
 ARG PROJECT_DIR=/go/src/github.com/microsoft
 WORKDIR ${PROJECT_DIR}/confidential-container-demos
 COPY /kafka/consumer ./kafka/consumer
