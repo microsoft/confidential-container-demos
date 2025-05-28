@@ -6,7 +6,7 @@ This sample is a basic Python application used to demonstrate Confidential Pods 
 
 ![Hello World Hardware Report](./media/hello-world-cc.png)
 
-The container is hosted publicly on [Azure Container Registry](mcr.microsoft.com/acc/samples/aks/helloworld:1.7).
+The container is hosted publicly on [Azure Container Registry](mcr.microsoft.com/acc/samples/aks/helloworld:1.8).
 
 ## Getting Started
 

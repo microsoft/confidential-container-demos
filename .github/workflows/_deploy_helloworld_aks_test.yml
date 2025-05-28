@@ -31,13 +31,13 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Log in to Public Azure Container Registry
-        if: github.event_name != 'pull_request'
-        run: az acr login --name ${{ secrets.AZURE_REGISTRY_NAME }}
+      - name: Set Azure Registry
+        run: |
+          echo "AZURE_REG_NAME=${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }}" >> $GITHUB_ENV
+          echo "AZURE_REG_URL=${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_URL || secrets.AZURE_REGISTRY_URL }}" >> $GITHUB_ENV
 
-      - name: Log in to Test Azure Container Registry
-        if: github.event_name == 'pull_request'
-        run: az acr login --name ${{ secrets.TEST_AZURE_REGISTRY_NAME }}
+      - name: Log in to Azure Container Registry
+        run: az acr login --name $AZURE_REG_NAME
 
       - name: Install Dependencies
         id: install-dependencies
@@ -60,9 +60,9 @@ jobs:
         run: |
             # check if official image
             if [[ "${{ inputs.helloworld-image }}" == *"mcr.microsoft.com"* ]]; then
-              echo HELLO_WORLD_IMAGE='${{ inputs.helloworld-image }}' >> $GITHUB_ENV
+              echo "HELLO_WORLD_IMAGE=${{ inputs.helloworld-image }}" >> $GITHUB_ENV
             else
-              echo HELLO_WORLD_IMAGE='${{ (github.event_name != 'pull_request' && secrets.AZURE_REGISTRY_URL) || secrets.TEST_AZURE_REGISTRY_URL }}'/'${{ inputs.helloworld-image }}' >> $GITHUB_ENV
+              echo "HELLO_WORLD_IMAGE=$AZURE_REG_URL/${{ inputs.helloworld-image }}" >> $GITHUB_ENV
             fi
 
       - name: Substitute Environment Variables

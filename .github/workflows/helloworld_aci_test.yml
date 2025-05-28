@@ -14,7 +14,7 @@ on:
     inputs:
       helloworld-image:
         description: "Hello World ACI Image"
-        default: "mcr.microsoft.com/acc/samples/aci/helloworld:2.9"
+        default: "mcr.microsoft.com/acc/samples/aci/helloworld:2.10"
         required: true
         type: string
       debug:

@@ -86,27 +86,31 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Set Azure Registry
+        run: |
+          echo "AZURE_REG_NAME=${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }}" >> $GITHUB_ENV
+          
+      - name: Log in to Azure Container Registry
+        run: az acr login --name $AZURE_REG_NAME
+
       - name: Cleanup Hello World ACI Images
         if: ${{ inputs.test-name == 'hello-world-aci' }}
         run: |
           # adding || true so that it doesn't fail if the image doesn't exist (i.e. helloworld didn't run)
-          az acr login --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }}
-          az acr repository delete --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/aci/helloworld:${{ github.sha }} --yes || true
+          az acr repository delete --name $AZURE_REG_NAME --image private/${{ github.actor }}/acc/samples/aci/helloworld:${{ github.sha }} --yes || true
 
       - name: Cleanup Hello World AKS Images
         if: ${{ inputs.test-name == 'hello-world-aks' }}
         run: |
           # adding || true so that it doesn't fail if the image doesn't exist (i.e. helloworld didn't run)
-          az acr login --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }}
-          az acr repository delete --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/aks/helloworld:${{ github.sha }} --yes || true
+          az acr repository delete --name $AZURE_REG_NAME --image private/${{ github.actor }}/acc/samples/aks/helloworld:${{ github.sha }} --yes || true
 
       - name: Cleanup Kafka Images
         if: ${{ inputs.test-name == 'kafka' }}
         run: |
           # adding || true so that it doesn't fail if the image doesn't exist (i.e. kafka didn't run)
-          az acr login --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }}
-          az acr repository delete --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/kafka/consumer:${{ github.sha }} --yes || true
-          az acr repository delete --name ${{ github.event_name == 'pull_request' && secrets.TEST_AZURE_REGISTRY_NAME || secrets.AZURE_REGISTRY_NAME }} --image private/${{ github.actor }}/acc/samples/kafka/producer:${{ github.sha }} --yes || true
+          az acr repository delete --name $AZURE_REG_NAME --image private/${{ github.actor }}/acc/samples/kafka/consumer:${{ github.sha }} --yes || true
+          az acr repository delete --name $AZURE_REG_NAME --image private/${{ github.actor }}/acc/samples/kafka/producer:${{ github.sha }} --yes || true
 
   cleanup-cluster:
     name: Clean Up Cluster

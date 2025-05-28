@@ -14,7 +14,7 @@ on:
     inputs:
       helloworld-image:
         description: "Hello World AKS Image"
-        default: "mcr.microsoft.com/acc/samples/aks/helloworld:1.7"
+        default: "mcr.microsoft.com/acc/samples/aks/helloworld:1.8"
         required: true
         type: string
       debug:

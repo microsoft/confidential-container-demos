@@ -12,7 +12,7 @@ WORKDIR /app
 
 # copy all files from this folder to working directory (ignores files in .dockerignore)
 ARG BUILD_DIR=~/confidential-container-demos/hello-world/ACI/app
-COPY --from=build ${BUILD_DIR}/Dockerfile ${BUILD_DIR}/main.py ${BUILD_DIR}/verbose-report /app/
+COPY --from=build ${BUILD_DIR}/. /app/
 
 RUN chmod +x verbose-report
 

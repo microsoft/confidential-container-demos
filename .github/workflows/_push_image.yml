@@ -44,6 +44,9 @@ jobs:
         with:
           version: v0.18.0
 
+      - name: Download ORAS CLI
+        uses: oras-project/setup-oras@v1
+
       - name: Log into Azure
         uses: azure/login@v2
         with:
@@ -51,13 +54,13 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Log in to Public Azure Container Registry
-        if: ${{ inputs.repo_type == 'public' }}
-        run: az acr login --name ${{ secrets.AZURE_REGISTRY_NAME }}
+      - name: Set Azure Registry
+        run: |
+          echo "AZURE_REG_NAME=${{ inputs.repo_type == 'public' && secrets.AZURE_REGISTRY_NAME || inputs.repo_type == 'private' && secrets.TEST_AZURE_REGISTRY_NAME }}" >> $GITHUB_ENV
+          echo "AZURE_REG_URL=${{ inputs.repo_type == 'public' && secrets.AZURE_REGISTRY_URL || inputs.repo_type == 'private' && secrets.TEST_AZURE_REGISTRY_URL }}" >> $GITHUB_ENV
 
-      - name: Log in to Test Azure Container Registry
-        if: ${{ inputs.repo_type == 'private' }}
-        run: az acr login --name ${{ secrets.TEST_AZURE_REGISTRY_NAME }}
+      - name: Log in to Azure Container Registry
+        run: az acr login --name $AZURE_REG_NAME
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
@@ -66,11 +69,20 @@ jobs:
           context: ${{ inputs.docker_context }}
           file: ${{ inputs.dockerfile_path }}/Dockerfile
           push: true
-          tags: ${{ inputs.repo_type == 'public' && secrets.AZURE_REGISTRY_URL || inputs.repo_type == 'private' && secrets.TEST_AZURE_REGISTRY_URL }}/${{ inputs.image }}:${{inputs.tag}}
+          tags: ${{ env.AZURE_REG_URL }}/${{ inputs.image }}:${{ inputs.tag }}
 
       - name: Generate Artifact Attestation
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ${{ inputs.repo_type == 'public' && secrets.AZURE_REGISTRY_URL || inputs.repo_type == 'private' && secrets.TEST_AZURE_REGISTRY_URL }}/${{ inputs.image }}
+          subject-name: ${{ env.AZURE_REG_URL }}/${{ inputs.image }}
           subject-digest: '${{steps.build-image.outputs.digest}}'
           push-to-registry: true
+
+      - name: Add End of Life Annotation
+        run: |
+          #get EOL date one month from now
+          EOL_DATE=$(date -u -d "+1 month" +"%Y-%m-%dT%H:%M:%SZ")
+
+          oras attach --artifact-type "application/vnd.microsoft.artifact.lifecycle" \
+            --annotation "vnd.microsoft.artifact.lifecycle.end-of-life.date=$EOL_DATE" \
+            $AZURE_REG_URL/${{ inputs.image }}@${{steps.build-image.outputs.digest}}
