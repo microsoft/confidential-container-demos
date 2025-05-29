@@ -1,9 +1,12 @@
-name: Cleanup All AKS Cluster in Resource Group
+name: Cleanup All AKS Clusters in Resource Group
 
 on:
   workflow_call:
   schedule:
     - cron: "0 0 * * *"
+
+permissions:
+  id-token: write # needed for nightly runs to get token to login to Azure
 
 jobs:
   remove-workload-and-cluster:

@@ -1,4 +1,4 @@
-name: Cleanup a Single AKS Cluster for a Pipeline Run
+name: Cleanup Resources
 
 on:
   workflow_call:
@@ -23,6 +23,9 @@ on:
         type: string
   schedule:
     - cron: "0 0 * * *"
+
+permissions:
+  id-token: write # needed for nightly runs to get token to login to Azure
 
 jobs:
   cleanup-running-acis:
@@ -133,6 +136,8 @@ jobs:
         run: |
           # cannot rely on the job success/fail indicator to determine whether the SKR_CLIENT_KID exists or not so attempt to delete anyway
           az keyvault key delete --vault-name kafka-test-pipeline-akv --name $SKR_CLIENT_KID 2>&1 || true
+          # purge key to ensure we don't get charged for it (soft delete takes 90 days)
+          az keyvault key purge --vault-name kafka-test-pipeline-akv --name $SKR_CLIENT_KID 2>&1 || true
           result=$(az aks list -g $RESOURCE_GROUP --query "[].name" -o tsv)
 
           max_retries=5
