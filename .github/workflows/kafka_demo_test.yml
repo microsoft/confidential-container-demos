@@ -24,7 +24,7 @@ on:
       key-release-image:
         description: "The image of the SKR sidecar to use"
         required: true
-        default: "aci/skr:2.10"
+        default: "aci/skr:2.11"
         type: string
       consumer-image:
         description: "Consumer Image"
@@ -65,7 +65,7 @@ jobs:
           echo "Triggering event is ${{ github.event_name }}"
           # uses default SKR but builds new Kafka images from source for PR
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "key-release-image=mcr.microsoft.com/aci/skr:2.10" >> $GITHUB_OUTPUT
+            echo "key-release-image=mcr.microsoft.com/aci/skr:2.11" >> $GITHUB_OUTPUT
             echo "consumer-image=private/${{ github.actor }}/acc/samples/kafka/consumer:${{ github.sha }}" >> $GITHUB_OUTPUT
             echo "producer-image=private/${{ github.actor }}/acc/samples/kafka/producer:${{ github.sha }}" >> $GITHUB_OUTPUT
           # uses the provided SKR and Kafka images or defaults for workflow_dispatch
