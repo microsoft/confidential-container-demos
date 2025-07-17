@@ -64,7 +64,7 @@ az confcom katapolicygen -y consumer/consumer.yaml
 #export WORKLOAD_MEASUREMENT=$(az confcom katapolicygen -y consumer/consumer.yaml | base64 --decode | sha256sum | cut -d' ' -f1)
 
 # use these commands to enable debugging the consumer
-UPDATED_POLICY_BASE64=$(python ../util/update-yaml-policy.py --file consumer/consumer.yaml --write)
+UPDATED_POLICY_BASE64=$(python ../util/update_yaml_policy.py --file consumer/consumer.yaml --write)
 export WORKLOAD_MEASUREMENT=$(echo "$UPDATED_POLICY_BASE64" | base64 --decode | sha256sum | cut -d' ' -f1)
 
 echo "Generated workload measurement: ${WORKLOAD_MEASUREMENT}"
@@ -133,7 +133,7 @@ sed -i '33s/^/            /' producer/producer.yaml
 sed -i '34s/^/            /' producer/producer.yaml
 az confcom katapolicygen -y producer/producer.yaml
 # use this command to enable debugging the producer
-# python ../util/update-yaml-policy.py --file producer/producer.yaml
+# python ../util/update_yaml_policy.py --file producer/producer.yaml
 cat producer/producer.yaml
 
 kubectl apply -f consumer/consumer.yaml 2>&1

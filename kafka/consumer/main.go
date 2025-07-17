@@ -53,7 +53,12 @@ func main() {
 			log.Fatalf("Unable to open file log location: %s", err.Error())
 		}
 		log.SetOutput(f)
-		defer f.Close()
+		defer func() {
+			err := f.Close()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}()
 	}
 
 	relayMessage := make(chan string)
@@ -62,12 +67,12 @@ func main() {
 
 	t, err := template.ParseFiles("/webtemplates/index.html")
 	if err != nil {
-		log.Fatalf("Error parsing templates: %s", err.Error())
+		log.Panicf("Error parsing templates: %s", err.Error())
 	}
 
 	credential, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		log.Fatalf("Retrieving Azure Credential failed: %s", err.Error())
+		log.Panicf("Retrieving Azure Credential failed: %s", err.Error())
 	}
 
 	eventHubNamespace := fmt.Sprintf("%s.servicebus.windows.net", util.GetEnv(eventHubNamespace))
@@ -81,10 +86,15 @@ func main() {
 		nil)
 
 	if err != nil {
-		log.Fatalf("Creating Consumer Client failed: %s", err.Error())
+		log.Panicf("Creating Consumer Client failed: %s", err.Error())
 	}
 
-	defer consumerClient.Close(context.Background())
+	defer func() {
+		err := consumerClient.Close(context.Background())
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 	start := time.Now().UTC()
 
 	partitionClient, err := consumerClient.NewPartitionClient(
@@ -98,10 +108,15 @@ func main() {
 	)
 
 	if err != nil {
-		log.Fatalf("Creating Consumer Partition Client failed: %s", err.Error())
+		log.Panicf("Creating Consumer Partition Client failed: %s", err.Error())
 	}
 
-	defer partitionClient.Close(context.Background())
+	defer func() {
+		err := partitionClient.Close(context.Background())
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	getRoot := func(w http.ResponseWriter, r *http.Request) {
 		data := struct {
@@ -140,12 +155,12 @@ func main() {
 
 	err = getStatus()
 	if err != nil {
-		log.Fatalf("Unable to get SKR status: %s", err.Error())
+		log.Panicf("Unable to get SKR status: %s", err.Error())
 	}
 
 	key, err := retrieveKey()
 	if err != nil {
-		log.Fatalf("Unable to retrieve key: %s", err.Error())
+		log.Panicf("Unable to retrieve key: %s", err.Error())
 	}
 
 	for {
@@ -157,7 +172,7 @@ func main() {
 		cancel()
 
 		if err != nil && !errors.Is(err, context.DeadlineExceeded) {
-			log.Fatalf("Receiving events failed due to the following reason: %s", err.Error())
+			log.Panicf("Receiving events failed due to the following reason: %s", err.Error())
 		}
 
 		for _, event := range events {
@@ -181,11 +196,11 @@ func main() {
 			if key != nil {
 				annotationBytes, err := base64.StdEncoding.DecodeString(message)
 				if err != nil {
-					log.Fatalf("error decoding message value %s", err.Error())
+					log.Panicf("error decoding message value %s", err.Error())
 				}
 				plaintext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, annotationBytes, nil)
 				if err != nil {
-					log.Fatalf("error decrypting message %s", err.Error())
+					log.Panicf("error decrypting message %s", err.Error())
 				}
 				message = string(plaintext)
 			}
@@ -239,27 +254,30 @@ func getStatus() error {
 		client := &http.Client{}
 		req, err := http.NewRequest("GET", "http://localhost:8080/status", nil)
 		if err != nil {
-			return fmt.Errorf("Error creating HTTP GET request: %w", err)
+			return fmt.Errorf("error creating http get request: %w", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := client.Do(req)
 		if err != nil {
-			return fmt.Errorf("HTTP GET error from SKR: %w", err)
+			return fmt.Errorf("http get error from skr: %w", err)
 		}
 
 		if resp.StatusCode < 200 || resp.StatusCode > 207 {
-			return fmt.Errorf("HTTP GET Status code not 2xx: %d.", resp.StatusCode)
+			return fmt.Errorf("HTTP GET Status code not 2xx: %d", resp.StatusCode)
 		}
 
 		var bodyText []byte
 		if resp != nil && resp.Body != nil {
 			limitSize := resp.ContentLength
-			const mb134 = 1 << 27 //134MB
+			const mb134 = 1 << 27 // 134MB
 			if limitSize < 1 || limitSize > mb134 {
 				limitSize = mb134
 			}
 			bodyText, _ = io.ReadAll(io.LimitReader(resp.Body, int64(limitSize)))
-			resp.Body.Close()
+			err := resp.Body.Close()
+			if err != nil {
+				log.Printf("Error closing response body: %v", err)
+			}
 		}
 
 		log.Printf("SKR status: %s", string(bodyText))
@@ -288,40 +306,43 @@ func retrieveKey() (*rsa.PrivateKey, error) {
 
 		req, err := http.NewRequest("POST", "http://localhost:8080/key/release", data)
 		if err != nil {
-			return fmt.Errorf("Error creating HTTP POST request: %w", err)
+			return fmt.Errorf("error creating http post request: %w", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := client.Do(req)
 		if err != nil {
-			return fmt.Errorf("HTTP POST error from SKR: %w", err)
+			return fmt.Errorf("http post error from skr: %w", err)
 		}
 
 		var bodyText []byte
 		if resp != nil && resp.Body != nil {
 			limitSize := resp.ContentLength
-			const mb134 = 1 << 27 //134MB
+			const mb134 = 1 << 27 // 134MB
 			if limitSize < 1 || limitSize > mb134 {
 				limitSize = mb134
 			}
 			bodyText, _ = io.ReadAll(io.LimitReader(resp.Body, int64(limitSize)))
-			resp.Body.Close()
+			err := resp.Body.Close()
+			if err != nil {
+				log.Printf("Error closing response body: %v", err)
+			}
 		}
 
 		if resp.StatusCode < 200 || resp.StatusCode > 207 {
 			log.Printf("[retrieveKey] SKR returned %d. Body:\n%s",
 				resp.StatusCode, string(bodyText))
-			return fmt.Errorf("Unable to retrieve key from SKR. HTTP POST Response Code %d.", resp.StatusCode)
+			return fmt.Errorf("unable to retrieve key from skr. http post response code %d", resp.StatusCode)
 		}
 
 		log.Printf("[retrieveKey] SKR returned status: %d, body: %s", resp.StatusCode, string(bodyText))
 
 		if err := json.Unmarshal(bodyText, &datakey); err != nil {
-			return fmt.Errorf("Unmarshalling key error: %w bodyText: %s", err, string(bodyText))
+			return fmt.Errorf("unmarshalling key error: %w body text: %s", err, string(bodyText))
 		}
 
 		k, err := RSAPrivateKeyFromJWK([]byte(datakey.Key))
 		if err != nil {
-			return fmt.Errorf("Constructing private rsa key from jwk key error: %w", err)
+			return fmt.Errorf("constructing private rsa key from jwk key error: %w", err)
 		}
 
 		key = k
@@ -330,7 +351,7 @@ func retrieveKey() (*rsa.PrivateKey, error) {
 	}
 
 	if err := WithRetry(operation); err != nil {
-		return nil, fmt.Errorf("Error retrieving key: %w", err)
+		return nil, fmt.Errorf("error retrieving key: %w", err)
 	}
 
 	log.Printf("consumer modulus (hex head) = %x", key.N.Bytes()[:32])

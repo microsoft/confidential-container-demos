@@ -56,8 +56,8 @@ jobs:
         id: get_docker_context
         run: |
           if [[ "${{ needs.parse_tag.outputs.image }}" == "aci/helloworld" ]]; then
-            context="hello-world/ACI/app"
-            dockerfile_path="hello-world/ACI/app"
+            context="hello-world/ACI"
+            dockerfile_path="hello-world/ACI"
           elif [[ "${{ needs.parse_tag.outputs.image }}" == "aks/helloworld" ]]; then
             context="hello-world/AKS"
             dockerfile_path="hello-world/AKS"

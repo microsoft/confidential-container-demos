@@ -42,7 +42,12 @@ func main() {
 			log.Fatalf("Unable to open file log location: %s", err.Error())
 		}
 		log.SetOutput(f)
-		defer f.Close()
+		defer func() {
+			err := f.Close()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}()
 	}
 
 	signals := make(chan os.Signal, 1)
@@ -50,7 +55,7 @@ func main() {
 
 	credential, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		log.Fatalf("Retrieving Azure Credential failed: %s", err.Error())
+		log.Panicf("Retrieving Azure Credential failed: %s", err.Error())
 	}
 
 	eventHubNamespace := fmt.Sprintf("%s.servicebus.windows.net", util.GetEnv(eventHubNamespace))
@@ -63,26 +68,31 @@ func main() {
 		nil)
 
 	if err != nil {
-		log.Fatalf("Creating Producer Client failed: %s", err.Error())
+		log.Panicf("Creating Producer Client failed: %s", err.Error())
 	}
 
-	defer producerClient.Close(context.Background())
+	defer func() {
+		err := producerClient.Close(context.Background())
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 	for {
 		event := createEventsForDemo()
 		newBatchOptions := &azeventhubs.EventDataBatchOptions{}
 		// Creates an EventDataBatch, which you can use to pack multiple events together, allowing for efficient transfer.
 		batch, err := producerClient.NewEventDataBatch(context.Background(), newBatchOptions)
 		if err != nil {
-			log.Fatalf("Creating event batch failed: %s", err.Error())
+			log.Panicf("Creating event batch failed: %s", err.Error())
 		}
 
 		err = batch.AddEventData(event, nil)
 		if err != nil {
-			log.Fatalf("Adding event data to batch failed: %s", err.Error())
+			log.Panicf("Adding event data to batch failed: %s", err.Error())
 		}
 
 		if err := producerClient.SendEventDataBatch(context.Background(), batch, nil); err != nil {
-			log.Fatalf("Event sending failed %s", err.Error())
+			log.Panicf("Event sending failed %s", err.Error())
 		}
 
 		select {

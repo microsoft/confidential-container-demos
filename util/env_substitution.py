@@ -1,16 +1,20 @@
+"""
+Utility function to substitute environment variables in JSON and YAML files.
+"""
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
 import argparse
 import json
 import os
-import yaml
 import shutil
 import tempfile
+import yaml
 
 
 def parse_json(file: str):
-    with open(file, "r+") as f:
+    """Parse a JSON file and substitute environment variables."""
+    with open(file, "r+", encoding="utf-8") as f:
         data = json.load(f)
         data["parameters"]["name"]["defaultValue"] = f'helloworld-aci-{os.environ["WORKFLOW_ID"]}'
         data["parameters"]["image"]["defaultValue"] = os.environ["HELLO_WORLD_IMAGE"]
@@ -20,7 +24,8 @@ def parse_json(file: str):
         f.truncate()
 
 def parse_yaml(file: str):
-    with open(file, "r+") as f:
+    """Parse a YAML file and substitute environment variables."""
+    with open(file, "r+", encoding="utf-8") as f:
         data = yaml.safe_load(f)
         data["spec"]["containers"][0]["image"] = os.environ["HELLO_WORLD_IMAGE"]
         # write yaml back to file

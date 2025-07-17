@@ -64,7 +64,7 @@ jobs:
     with:
       image: "private/${{ github.actor }}/acc/samples/aks/helloworld"
       tag: "${{ github.sha }}"
-      docker_context: hello-world/AKS
+      docker_context: hello-world
       dockerfile_path: hello-world/AKS
       repo_type: private
 

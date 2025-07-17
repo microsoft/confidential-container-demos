@@ -64,8 +64,8 @@ jobs:
     with:
       image: "private/${{ github.actor }}/acc/samples/aci/helloworld"
       tag: "${{ github.sha }}"
-      docker_context: hello-world/ACI/app
-      dockerfile_path: hello-world/ACI/app
+      docker_context: hello-world
+      dockerfile_path: hello-world/ACI
       repo_type: private
 
   deploy-helloworld-aci-test:

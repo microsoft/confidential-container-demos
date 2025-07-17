@@ -1,3 +1,6 @@
+"""
+Update a base64-encoded Rego policy in a Kubernetes Pod YAML file.
+"""
 #!/usr/bin/env python3
 
 import argparse
@@ -8,10 +11,11 @@ import sys
 import yaml
 
 
-def update_policy(encoded_policy: str, write: bool, exec: bool) -> str:
+def update_policy(encoded_policy: str, write: bool, exec_proc: bool) -> str:
     """
     Decodes the given base64 policy, finds the JSON in 'policy_data := { ... }',
-    updates `request_defaults.WriteStreamRequest` and `request_defaults.ExecProcessRequest.commands`,
+    updates `request_defaults.WriteStreamRequest` and 
+    `request_defaults.ExecProcessRequest.commands`,
     then re-encodes the policy and returns the updated base64.
     """
     # Decode base64 => text
@@ -32,8 +36,10 @@ def update_policy(encoded_policy: str, write: bool, exec: bool) -> str:
     # Update fields
     if write:
         policy_data_dict["request_defaults"]["WriteStreamRequest"] = True
-    if exec:
-        policy_data_dict["request_defaults"]["ExecProcessRequest"]["commands"] = ["/bin/bash", "/bin/sh"]
+    if exec_proc:
+        policy_data_dict["request_defaults"]["ExecProcessRequest"]["commands"] = [
+            "/bin/bash", "/bin/sh"
+        ]
 
     # Convert dict back to JSON
     updated_block = prefix + json.dumps(policy_data_dict, indent=2) + "\n"
@@ -49,14 +55,14 @@ def update_policy(encoded_policy: str, write: bool, exec: bool) -> str:
     return base64.b64encode(modified_policy.encode("utf-8")).decode("utf-8")
 
 
-def parse_and_update(file_path: str, write: bool, exec: bool) -> str:
+def parse_and_update(file_path: str, write: bool, exec_proc: bool) -> str:
     """
     Loads all docs from the YAML file, finds the Pod annotation:
-      metadata.annotations["io.katacontainers.config.agent.policy"]
+    metadata.annotations["io.katacontainers.config.agent.policy"]
     Updates that policy, overwrites it, writes back to the file,
     and returns the new base64 policy string.
     """
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         docs = list(yaml.safe_load_all(f))
 
     new_base64 = None
@@ -72,14 +78,14 @@ def parse_and_update(file_path: str, write: bool, exec: bool) -> str:
             annotations = doc.setdefault("metadata", {}).setdefault("annotations", {})
             old_policy = annotations.get("io.katacontainers.config.agent.policy")
             if old_policy:
-                new_base64 = update_policy(old_policy, write, exec)
+                new_base64 = update_policy(old_policy, write, exec_proc)
                 # Overwrite in the annotation
                 annotations["io.katacontainers.config.agent.policy"] = new_base64
 
         updated_docs.append(doc)
 
     # Write everything back to the same file
-    with open(file_path, "w") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         yaml.safe_dump_all(updated_docs, f)
 
     # Return the new policy. If no policy found, we'll return None.
@@ -88,9 +94,12 @@ def parse_and_update(file_path: str, write: bool, exec: bool) -> str:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Update the base64 policy in a Pod YAML.")
-    parser.add_argument("--file", required=True, help="Path to the YAML file with the Pod definition.")
-    parser.add_argument("--write", action='store_true', help="Update the policy WriteStream to True")
-    parser.add_argument("--exec", action='store_true', help="Update the policy to allow /bin/bash and /bin/sh ExecProcessRequests.")
+    parser.add_argument("--file", required=True,
+                        help="Path to the YAML file with the Pod definition.")
+    parser.add_argument("--write", action='store_true',
+                        help="Update the policy WriteStream to True")
+    parser.add_argument("--exec", action='store_true',
+                        help="Update the policy to allow /bin/bash and /bin/sh.")
     args = parser.parse_args()
 
     new_policy = parse_and_update(args.file, args.write, args.exec)
