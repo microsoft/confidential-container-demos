@@ -28,14 +28,15 @@ on:
         type: string
       consumer-image:
         description: "Consumer Image"
-        default: "public/acc/samples/kafka/consumer:3.0"
+        default: "public/acc/samples/kafka/consumer:3.1.0"
         required: true
         type: string
       producer-image:
         description: "Producer Image"
-        default: "public/acc/samples/kafka/producer:3.0"
+        default: "public/acc/samples/kafka/producer:3.1.0"
         required: true
         type: string
+  workflow_call:
   merge_group:
     branches:
       - main
@@ -54,6 +55,7 @@ jobs:
       key-release-image: ${{ steps.extract-envs.outputs.key-release-image }}
       consumer-image: ${{ steps.extract-envs.outputs.consumer-image }}
       producer-image: ${{ steps.extract-envs.outputs.producer-image }}
+      image-tag: ${{ steps.extract-envs.outputs.image-tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,25 +70,33 @@ jobs:
             echo "key-release-image=mcr.microsoft.com/aci/skr:2.11" >> $GITHUB_OUTPUT
             echo "consumer-image=private/${{ github.actor }}/acc/samples/kafka/consumer:${{ github.sha }}" >> $GITHUB_OUTPUT
             echo "producer-image=private/${{ github.actor }}/acc/samples/kafka/producer:${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "image-tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          # use the tag for workflow_call (called from test_all_images.yml)
+          elif [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+            echo "key-release-image=mcr.microsoft.com/aci/skr:2.11" >> $GITHUB_OUTPUT
+            echo "consumer-image=private/cron/acc/samples/kafka/consumer:test" >> $GITHUB_OUTPUT
+            echo "producer-image=private/cron/acc/samples/kafka/producer:test" >> $GITHUB_OUTPUT
+            echo "image-tag=test" >> $GITHUB_OUTPUT
           # uses the provided SKR and Kafka images or defaults for workflow_dispatch
           else
             echo "key-release-image=${{ format('{0}/{1}', inputs.sidecar-registry, inputs.key-release-image) }}" >> $GITHUB_OUTPUT
             echo "consumer-image=${{ inputs.consumer-image }}" >> $GITHUB_OUTPUT
             echo "producer-image=${{ inputs.producer-image }}" >> $GITHUB_OUTPUT
+            echo "image-tag=3.0" >> $GITHUB_OUTPUT
           fi
 
   push_images:
     name: Push Images to Private Registry for Testing
     needs: [prepare]
     uses: ./.github/workflows/_push_image.yml
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_call'
     secrets: inherit
     strategy:
       matrix:
         image: ["kafka/consumer", "kafka/producer"]
     with:
       image: "private/${{ github.actor }}/acc/samples/${{ matrix.image }}"
-      tag: "${{ github.sha }}"
+      tag: "${{ needs.prepare.outputs.image-tag }}"
       docker_context: ${{ '.' }}
       repo_type: private
       dockerfile_path: "${{ matrix.image }}"

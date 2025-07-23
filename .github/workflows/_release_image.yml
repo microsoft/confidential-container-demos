@@ -1,0 +1,53 @@
+name: Release Individual Image
+
+on:
+  workflow_call:
+    inputs:
+      repo_type:
+        description: "Type of repository (public/private)"
+        required: true
+        type: string
+      image:
+        description: "Image to push"
+        required: true
+        type: string
+      tag:
+        description: "Tag to push the image with"
+        required: true
+        type: string
+
+jobs:
+  get_docker_context:
+    name: Get Docker Context
+    runs-on: ubuntu-latest
+    outputs:
+      docker_context: ${{ steps.get_docker_context.outputs.docker_context }}
+      dockerfile_path: ${{ steps.get_docker_context.outputs.dockerfile_path }}
+    steps:
+      - name: Get Docker Context and Dockerfile Path
+        id: get_docker_context
+        run: |
+          if [[ "${{ inputs.image }}" == "aci/helloworld" ]]; then
+            context="hello-world"
+            dockerfile_path="hello-world/ACI"
+          elif [[ "${{ inputs.image }}" == "aks/helloworld" ]]; then
+            context="hello-world"
+            dockerfile_path="hello-world/AKS"
+          else
+            context="."
+            dockerfile_path="${{ inputs.image }}"
+          fi
+          echo "docker_context=$context" >> $GITHUB_OUTPUT
+          echo "dockerfile_path=$dockerfile_path" >> $GITHUB_OUTPUT
+
+  build_and_push:
+    name: Build and Push Docker Images
+    needs: get_docker_context
+    uses: ./.github/workflows/_push_image.yml
+    secrets: inherit
+    with:
+      image: ${{ inputs.image }}
+      tag: ${{ inputs.tag }}
+      docker_context: ${{ fromJson(needs.get_docker_context.outputs.docker_context) }}
+      dockerfile_path: ${{ fromJson(needs.get_docker_context.outputs.dockerfile_path) }}
+      repo_type: ${{ inputs.repo_type }}

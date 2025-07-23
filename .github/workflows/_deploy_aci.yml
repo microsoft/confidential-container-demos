@@ -9,7 +9,7 @@ on:
         type: string
       helloworld-image:
         description: "Hello World ACI Image"
-        default: "mcr.microsoft.com/acc/samples/aci/helloworld:2.10"
+        default: "mcr.microsoft.com/acc/samples/aci/helloworld:2.11.0"
         required: true
         type: string
       debug:
@@ -25,7 +25,7 @@ on:
         type: string
       helloworld-image:
         description: "Hello World ACI Image"
-        default: "mcr.microsoft.com/acc/samples/aci/helloworld:2.10"
+        default: "mcr.microsoft.com/acc/samples/aci/helloworld:2.11.0"
         required: true
         type: string
       debug:
