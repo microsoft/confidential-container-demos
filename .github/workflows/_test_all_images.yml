@@ -1,0 +1,17 @@
+name: Test All Images
+
+on:
+  workflow_call:
+
+jobs:
+  test_kafka:
+    name: Test Kafka
+    uses: ./.github/workflows/kafka_demo_test.yml
+
+  test_helloworld_aks:
+    name: Test Hello World AKS Images
+    uses: ./.github/workflows/helloworld_aks_test.yml
+
+  test_helloworld_aci:
+    name: Test Hello World ACI Images
+    uses: ./.github/workflows/helloworld_aci_test.yml

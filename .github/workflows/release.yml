@@ -1,91 +1,94 @@
-name: Build and Push Docker Image
+name: Release Images
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'aci/helloworld:v*'
-      - 'aks/helloworld:v*'
-      - 'kafka/consumer:v*'
-      - 'kafka/producer:v*'
-    paths:
-      - .github/workflows/release.yml
-      - hello-world/**
-      - kafka/**
+  schedule:
+    - cron: '0 0 1 * *' # first of the month at midnight
 
 permissions:
   id-token: write # This is required for requesting the JWT
-  contents: read  # This is required for actions/checkout
   attestations: write
   packages: write
+  contents: write # required for PR creation
+  pull-requests: write # required for PR creation
 
 jobs:
-  parse_tag:
-    name: Parse Tag
+  test_all_images:
+    name: Test All Images
+    uses: ./.github/workflows/_test_all_images.yml
+
+  increment_public_tag:
+    name: Increment Public Tags
+    needs: test_all_images
     runs-on: ubuntu-latest
     outputs:
-      image: ${{ steps.parse_tag.outputs.image }}
-      image_tag: ${{ steps.parse_tag.outputs.image_tag }}
-      repo_type: ${{ steps.parse_tag.outputs.repo_type }}
+      HELLOWORLD_ACI_VERSION: ${{ steps.increment.outputs.HELLOWORLD_ACI_VERSION }}
+      HELLOWORLD_AKS_VERSION: ${{ steps.increment.outputs.HELLOWORLD_AKS_VERSION }}
+      KAFKA_VERSION: ${{ steps.increment.outputs.KAFKA_VERSION }}
     steps:
-      - name: Parse Tag
-        id: parse_tag
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Increment Tags
+        id: increment
         run: |
-          image=$(echo ${{ github.ref_name }} | cut -d ":" -f 1)
-          image_tag=$(echo ${{ github.ref_name }} | cut -d ":" -f 2)
+          # File to store the values
+          FILE="tags.json"
 
-          repo_type="public"
-          if [[ "${{ contains(github.ref, 'rc') }}" ]]; then
-            repo_type="private"
-          fi
+          # Read the current value -- last in the array
+          CURR_HELLOWORLD_ACI_VER=$(jq -r '.["aci/helloworld"] | .[-1]' "$FILE")
+          CURR_HELLOWORLD_AKS_VER=$(jq -r '.["aks/helloworld"] | .[-1]' "$FILE")
+          CURR_KAFKA_VER=$(jq -r '.["kafka"] | .[-1]' "$FILE")
 
-          echo "image=$image" >> $GITHUB_OUTPUT
-          echo "image_tag=$image_tag" >> $GITHUB_OUTPUT
-          echo "repo_type=$repo_type" >> $GITHUB_OUTPUT
+          # increment the patch version
+          NEXT_HELLOWORLD_ACI_VER=$(echo $CURR_HELLOWORLD_ACI_VER | awk -F. '{$NF+=1; print $1"."$2"."$3}')
+          NEXT_HELLOWORLD_AKS_VER=$(echo $CURR_HELLOWORLD_AKS_VER | awk -F. '{$NF+=1; print $1"."$2"."$3}')
+          NEXT_KAFKA_VER=$(echo $CURR_KAFKA_VER | awk -F. '{$NF+=1; print $1"."$2"."$3}')
 
-  get_docker_context:
-    name: Get Docker Context
-    needs: parse_tag
-    runs-on: ubuntu-latest
-    outputs:
-      docker_context: ${{ steps.get_docker_context.outputs.docker_context }}
-      dockerfile_path: ${{ steps.get_docker_context.outputs.dockerfile_path }}
-    steps:
-      - name: Get Docker Context and Dockerfile Path
-        id: get_docker_context
-        run: |
-          if [[ "${{ needs.parse_tag.outputs.image }}" == "aci/helloworld" ]]; then
-            context="hello-world/ACI"
-            dockerfile_path="hello-world/ACI"
-          elif [[ "${{ needs.parse_tag.outputs.image }}" == "aks/helloworld" ]]; then
-            context="hello-world/AKS"
-            dockerfile_path="hello-world/AKS"
-          else
-            context="."
-            dockerfile_path="${{ needs.parse_tag.outputs.image }}"
-          fi
-          echo "docker_context=$context" >> $GITHUB_OUTPUT
-          echo "dockerfile_path=$dockerfile_path" >> $GITHUB_OUTPUT
+          # set the output for the new public build versions
+          echo "HELLOWORLD_ACI_VERSION=$NEXT_HELLOWORLD_ACI_VER" >> $GITHUB_OUTPUT
+          echo "HELLOWORLD_AKS_VERSION=$NEXT_HELLOWORLD_AKS_VER" >> $GITHUB_OUTPUT
+          echo "KAFKA_VERSION=$NEXT_KAFKA_VER" >> $GITHUB_OUTPUT
 
-  build_and_push:
-    name: Build and Push Docker Images
-    needs: [parse_tag, get_docker_context]
-    uses: ./.github/workflows/_push_image.yml
-    secrets: inherit
-    with:
-      image: ${{ needs.parse_tag.outputs.repo_type }}/${{ github.actor }}/acc/samples/${{ needs.parse_tag.outputs.image }}
-      tag: ${{ needs.parse_tag.outputs.image_tag }}
-      docker_context: ${{ fromJson(needs.get_docker_context.outputs.docker_context) }}
-      dockerfile_path: ${{ fromJson(needs.get_docker_context.outputs.dockerfile_path) }}
-      repo_type: ${{ needs.parse_tag.outputs.repo_type }}
+          # store the updated values back to the file
+          jq '.["aci/helloworld"] += ["'$NEXT_HELLOWORLD_ACI_VER'"]' "$FILE" > tmp.json && mv tmp.json "$FILE"
+          jq '.["aks/helloworld"] += ["'$NEXT_HELLOWORLD_AKS_VER'"]' "$FILE" > tmp.json && mv tmp.json "$FILE"
+          jq '.["kafka"] += ["'$NEXT_KAFKA_VER'"]' "$FILE" > tmp.json && mv tmp.json "$FILE"
 
-  create_release:
-    needs: [parse_tag, get_docker_context, build_and_push]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Publish release
-        uses: softprops/action-gh-release@v1
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
         with:
-          tag_name: ${{ github.ref_name }}
-          prerelease: ${{ contains(github.ref, 'rc') }}
+          commit-message: Update Image Tags for Public Release
+          branch: update_image_tags
+          delete-branch: true
+          title: 'Update Image Tags for Public Release'
+          body: |
+            Update Image Tags for Public Release
+            - Auto-generated by [update_image_tags][1]
+
+            [1]: https://github.com/peter-evans/create-pull-request
+          assignees: hgarvison # To-Do: update once we transfer ownership
+          team-reviewers: |
+            microsoft/accct
+
+  release_all_images:
+    name: Build and Push Docker Images
+    needs: [test_all_images, increment_public_tag]
+    uses: ./.github/workflows/_release_image.yml
+    secrets: inherit
+    if: github.event_name == 'schedule'
+    strategy:
+      matrix:
+        image: ["aci/helloworld", "aks/helloworld", "kafka/consumer", "kafka/producer"]
+        include:
+          - image: "aci/helloworld"
+            image_tag: ${{ needs.increment_public_tag.outputs.HELLOWORLD_ACI_VERSION }}
+          - image: "aks/helloworld"
+            image_tag: ${{ needs.increment_public_tag.outputs.HELLOWORLD_AKS_VERSION }}
+          - image: "kafka/consumer"
+            image_tag: ${{ needs.increment_public_tag.outputs.KAFKA_VERSION }}
+          - image: "kafka/producer"
+            image_tag: ${{ needs.increment_public_tag.outputs.KAFKA_VERSION }}
+    with:
+      image: ${{ matrix.image }}
+      tag: ${{ matrix.image_tag }}
+      repo_type: 'public'
+

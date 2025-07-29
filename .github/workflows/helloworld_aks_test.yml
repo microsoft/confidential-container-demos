@@ -14,7 +14,7 @@ on:
     inputs:
       helloworld-image:
         description: "Hello World AKS Image"
-        default: "mcr.microsoft.com/acc/samples/aks/helloworld:1.8"
+        default: "mcr.microsoft.com/acc/samples/aks/helloworld:1.9.0"
         required: true
         type: string
       debug:
@@ -22,6 +22,7 @@ on:
         default: false
         required: false
         type: boolean
+  workflow_call:
   merge_group:
     branches:
       - main
@@ -38,6 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
         helloworld-image: ${{ steps.extract-envs.outputs.helloworld-image }}
+        image-tag: ${{ steps.extract-envs.outputs.image-tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,20 +52,26 @@ jobs:
           # builds new images from source for PR
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "helloworld-image=private/${{ github.actor }}/acc/samples/aks/helloworld:${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "image-tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          # use the tag for workflow_call (called from test_all_images.yml)
+          elif [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+            echo "helloworld-image=private/cron/acc/samples/aks/helloworld:test" >> $GITHUB_OUTPUT
+            echo "image-tag=test" >> $GITHUB_OUTPUT
           # uses the provided helloworld image or default for workflow_dispatch
           else
             echo "helloworld-image=${{ inputs.helloworld-image }}" >> $GITHUB_OUTPUT
+            echo "image-tag=1.8" >> $GITHUB_OUTPUT
           fi
 
   push_images:
     name: Push Images to Private Registry for Testing
     needs: [prepare]
     uses: ./.github/workflows/_push_image.yml
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_call'
     secrets: inherit
     with:
       image: "private/${{ github.actor }}/acc/samples/aks/helloworld"
-      tag: "${{ github.sha }}"
+      tag: "${{ needs.prepare.outputs.image-tag }}"
       docker_context: hello-world
       dockerfile_path: hello-world/AKS
       repo_type: private

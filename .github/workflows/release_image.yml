@@ -1,0 +1,73 @@
+name: Release Individual Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'aci/helloworld-*'
+      - 'aks/helloworld-*'
+      - 'kafka/consumer-*'
+      - 'kafka/producer-*'
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
+  attestations: write
+  packages: write
+
+jobs:
+  parse_tag:
+    name: Parse Tag
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.parse_tag.outputs.image }}
+      image_tag: ${{ steps.parse_tag.outputs.image_tag }}
+      repo_type: ${{ steps.parse_tag.outputs.repo_type }}
+    if: github.event_name == 'push'
+    steps:
+      - name: Parse Tag
+        id: parse_tag
+        run: |
+          image=$(echo ${{ github.ref_name }} | cut -d "-" -f 1)
+          image_tag=$(echo ${{ github.ref_name }} | cut -d "-" -f 2)
+
+          repo_type="public"
+          if [[ "${{ contains(github.ref, 'rc') }}" ]]; then
+            repo_type="private"
+          fi
+
+          echo "image=$image" >> $GITHUB_OUTPUT
+          echo "image_tag=$image_tag" >> $GITHUB_OUTPUT
+          echo "repo_type=$repo_type" >> $GITHUB_OUTPUT
+
+  test_helloworld_aci:
+    name: Test Hello World ACI
+    uses: ./.github/workflows/helloworld_aci_test.yml
+    needs: parse_tag
+    if: needs.parse_tag.outputs.image == 'aci/helloworld'
+
+  test_helloworld_aks:
+    name: Test Hello World AKS
+    uses: ./.github/workflows/helloworld_aks_test.yml
+    needs: parse_tag
+    if: needs.parse_tag.outputs.image == 'aks/helloworld'
+
+  test_kafka:
+    name: Test Kafka
+    uses: ./.github/workflows/kafka_demo_test.yml
+    needs: parse_tag
+    if: needs.parse_tag.outputs.image == 'kafka/consumer' || needs.parse_tag.outputs.image == 'kafka/producer'
+
+  release_tagged_images:
+    name: Build and Push Docker Images
+    needs: [parse_tag, test_helloworld_aci, test_helloworld_aks, test_kafka]
+    uses: ./.github/workflows/_release_image.yml
+    secrets: inherit
+    if: github.event_name == 'push'
+    with:
+      image: /${{ needs.parse_tag.outputs.repo_type }}/acc/samples/${{ needs.parse_tag.outputs.image }}
+      tag: ${{ needs.parse_tag.outputs.image_tag }}
+      repo_type: ${{ needs.parse_tag.outputs.repo_type }}
+
+  
